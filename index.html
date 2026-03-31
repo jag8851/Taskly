@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0e0f11">
+<title>Tasks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--surface:#16181c;--surface2:#1e2128;--surface3:#252930;--border:#2a2d35;--border2:#363b45;--text:#e8eaf0;--text-muted:#6b7280;--text-dim:#9aa0b0;--critical:#ff3b3b;--critical-bg:rgba(255,59,59,0.1);--critical-border:rgba(255,59,59,0.28);--high:#ff6b35;--high-bg:rgba(255,107,53,0.1);--high-border:rgba(255,107,53,0.28);--medium:#f0b429;--medium-bg:rgba(240,180,41,0.09);--medium-border:rgba(240,180,41,0.25);--low:#4a5568;--low-bg:rgba(74,85,104,0.18);--low-border:rgba(74,85,104,0.35);--now:#00d4ff;--soon:#a78bfa;--later:#4a5568;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--nav-h:60px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;overflow:hidden;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.app{display:flex;flex-direction:column;height:100%;padding-top:var(--safe-top)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:52px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg)}
+.wordmark{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:.18em;color:var(--text);text-transform:uppercase}
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:16px 16px 0;padding-bottom:calc(var(--nav-h) + var(--safe-bottom) + 88px)}
+.view{display:none}.view.active{display:block}
+.section{margin-bottom:28px}
+.section-header{display:flex;align-items:center;gap:9px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.section-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.section-count{font-family:var(--mono);font-size:10px;color:var(--border2);margin-left:auto}
+.task-list{display:flex;flex-direction:column;gap:5px}
+.empty-section{font-family:var(--mono);font-size:11px;color:var(--border2);padding:12px 0}
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .13s;user-select:none}
+.task-card.expanded{border-color:var(--border2)}
+.task-card-inner{display:flex;align-items:center;gap:11px;padding:13px 14px;min-height:56px}
+.done-btn{width:26px;height:26px;border-radius:7px;border:1.5px solid var(--border2);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:transparent;transition:all .13s}
+.done-btn:active{background:var(--surface3)}
+.task-card.completed .done-btn{background:var(--surface3);color:var(--text-muted)}
+.priority-bar{width:3px;height:24px;border-radius:2px;flex-shrink:0}
+.priority-bar.critical{background:var(--critical)}.priority-bar.high{background:var(--high)}.priority-bar.medium{background:var(--medium)}.priority-bar.low{background:var(--low)}
+.task-body{flex:1;min-width:0}
+.task-title{font-size:15px;font-weight:400;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.task-card.completed .task-title{text-decoration:line-through;color:var(--text-muted)}
+.task-chips{display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap}
+.time-chip{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
+.time-chip.now{color:var(--now);background:rgba(0,212,255,.09);border:1px solid rgba(0,212,255,.22)}
+.time-chip.soon{color:var(--soon);background:rgba(167,139,250,.09);border:1px solid rgba(167,139,250,.22)}
+.time-chip.later{color:var(--text-muted);background:transparent;border:1px solid var(--border)}
+.time-chip.date{color:var(--soon);background:rgba(167,139,250,.09);border:1px solid rgba(167,139,250,.22)}
+.tag-pill{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;color:var(--text-muted);background:var(--surface3);border:1px solid var(--border)}
+.task-expanded{display:none;padding:0 14px 14px 54px;border-top:1px solid var(--border)}
+.task-card.expanded .task-expanded{display:block}
+.expanded-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 0;margin-top:12px}
+.expanded-cell{display:flex;flex-direction:column;gap:2px}
+.expanded-label{font-family:var(--mono);font-size:9px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase}
+.expanded-val{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+.expanded-actions{display:flex;gap:8px;margin-top:14px}
+.action-btn{flex:1;padding:11px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-muted);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.action-btn:active{background:var(--surface2);color:var(--text)}
+.action-btn.danger:active{background:var(--critical-bg);color:var(--critical);border-color:var(--critical-border)}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:stretch;z-index:200}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:none;border:none;cursor:pointer;color:var(--text-muted);transition:color .13s;padding:0;min-height:44px}
+.nav-tab.active{color:var(--text)}.nav-tab:active{opacity:.7}
+.nav-tab-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;line-height:1}
+.fab{position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 16px);right:20px;width:58px;height:58px;border-radius:17px;background:var(--text);color:var(--bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:201;box-shadow:0 4px 24px rgba(0,0,0,.55),0 1px 4px rgba(0,0,0,.3);transition:transform .13s,opacity .13s}
+.fab:active{transform:scale(.91);opacity:.9}
+.sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:300;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.sheet-overlay.open{display:block}
+.sheet{position:fixed;bottom:0;left:0;right:0;background:var(--surface2);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);z-index:301;padding-bottom:calc(24px + var(--safe-bottom));transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:94vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sheet.open{transform:translateY(0)}
+.sheet-handle{width:38px;height:4px;background:var(--border2);border-radius:2px;margin:13px auto 0}
+.sheet-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);text-align:center;padding:14px 20px 0}
+.sheet-body{padding:16px 20px 0}
+.sheet-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-family:var(--sans);font-size:17px;padding:14px 16px;outline:none;transition:border-color .13s;caret-color:var(--now);-webkit-appearance:none;appearance:none}
+.sheet-input:focus{border-color:rgba(0,212,255,.4)}.sheet-input::placeholder{color:var(--border2)}
+.parse-row{display:flex;flex-wrap:wrap;gap:5px;min-height:24px;margin-top:10px}
+.parse-chip{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:5px;animation:chipIn .12s ease}
+@keyframes chipIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+.opts-section{margin-top:18px}
+.opts-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.opts-row{display:flex;gap:7px;flex-wrap:wrap}
+.opt-pill{padding:9px 15px;border-radius:9px;border:1px solid var(--border);background:none;color:var(--text-muted);font-family:var(--mono);font-size:12px;cursor:pointer;letter-spacing:.04em;min-height:40px}
+.opt-pill:active{opacity:.7}
+.opt-pill.selected{color:var(--text)}
+.opt-pill.selected.critical{border-color:var(--critical);background:var(--critical-bg);color:var(--critical)}
+.opt-pill.selected.high{border-color:var(--high);background:var(--high-bg);color:var(--high)}
+.opt-pill.selected.medium{border-color:var(--medium);background:var(--medium-bg);color:var(--medium)}
+.opt-pill.selected.low{border-color:var(--low);background:var(--low-bg);color:var(--text-muted)}
+.opt-pill.selected.now{border-color:var(--now);background:rgba(0,212,255,.08);color:var(--now)}
+.opt-pill.selected.soon{border-color:var(--soon);background:rgba(167,139,250,.08);color:var(--soon)}
+.opt-pill.selected.later{border-color:var(--border2);color:var(--text-dim)}
+.tag-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:var(--mono);font-size:13px;padding:11px 13px;outline:none;-webkit-appearance:none;transition:border-color .13s}
+.tag-input:focus{border-color:var(--border2)}.tag-input::placeholder{color:var(--border2);font-size:12px}
+.sheet-hint{font-family:var(--mono);font-size:10px;color:var(--border2);margin-top:10px;line-height:1.8}
+.sheet-hint span{color:var(--text-muted)}
+.submit-btn{width:100%;background:var(--text);color:var(--bg);border:none;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.08em;padding:16px;border-radius:12px;cursor:pointer;text-transform:uppercase;margin-top:20px}
+.submit-btn:active{opacity:.82}
+.submit-btn.danger{background:none;color:var(--critical);border:1px solid var(--critical-border);margin-top:10px}
+.search-bar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.search-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--sans);font-size:15px;padding:12px 14px;outline:none;-webkit-appearance:none}
+.search-input::placeholder{color:var(--text-muted)}
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-chip{padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-muted);font-family:var(--mono);font-size:11px;white-space:nowrap;cursor:pointer;min-height:36px}
+.filter-chip.active{background:var(--surface3);color:var(--text);border-color:var(--border2)}
+.completed-toggle{display:flex;align-items:center;gap:9px;padding:14px 0;color:var(--text-muted);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-top:1px solid var(--border);margin-top:8px;user-select:none}
+.completed-toggle svg{transition:transform .2s}
+.completed-toggle.open svg{transform:rotate(90deg)}
+.completed-section{display:none}.completed-section.open{display:block;padding-top:8px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:8px;text-align:center}
+.empty-title{font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:.08em}
+.empty-sub{font-family:var(--mono);font-size:11px;color:var(--border2)}
+::-webkit-scrollbar{width:0}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar"><span class="wordmark">Tasks</span></header>
+  <div class="scroll-area">
+    <div class="view active" id="view-home">
+      <div id="home-focus-wrap"></div><div id="home-coming-wrap"></div>
+      <div id="home-later-wrap"></div><div id="home-done-wrap"></div>
+    </div>
+    <div class="view" id="view-priority">
+      <div id="pri-critical-wrap"></div><div id="pri-high-wrap"></div>
+      <div id="pri-medium-wrap"></div><div id="pri-low-wrap"></div><div id="pri-done-wrap"></div>
+    </div>
+    <div class="view" id="view-time">
+      <div id="time-now-wrap"></div><div id="time-soon-wrap"></div>
+      <div id="time-later-wrap"></div><div id="time-done-wrap"></div>
+    </div>
+    <div class="view" id="view-all">
+      <div class="search-bar">
+        <input class="search-input" id="search-input" type="search" placeholder="Search tasks…" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="filter-row" id="filter-row"></div>
+      </div>
+      <div id="all-list"></div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab active" data-view="home">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 10.5L11 3l8 7.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1v-8.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 20v-7h6v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <span class="nav-tab-label">Home</span>
+    </button>
+    <button class="nav-tab" data-view="priority">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="5.5" r="2" fill="currentColor"/><circle cx="11" cy="11" r="2" fill="currentColor" opacity=".55"/><circle cx="11" cy="16.5" r="2" fill="currentColor" opacity=".25"/><path d="M15 5.5h2M15 11h2M15 16.5h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="nav-tab-label">Priority</span>
+    </button>
+    <button class="nav-tab" data-view="time">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M11 7v4l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="nav-tab-label">Time</span>
+    </button>
+    <button class="nav-tab" data-view="all">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M14 14L19 19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="nav-tab-label">All</span>
+    </button>
+  </nav>
+</div>
+
+<button class="fab" id="open-add">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+</button>
+
+<div class="sheet-overlay" id="add-overlay"></div>
+<div class="sheet" id="add-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-label">New Task</div>
+  <div class="sheet-body">
+    <input class="sheet-input" id="task-input" type="text" placeholder="What needs doing?" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false">
+    <div class="parse-row" id="parse-preview"></div>
+    <div class="opts-section">
+      <div class="opts-label">Priority</div>
+      <div class="opts-row" id="add-priority-opts">
+        <button class="opt-pill critical" data-val="critical">Critical</button>
+        <button class="opt-pill high" data-val="high">High</button>
+        <button class="opt-pill medium selected medium" data-val="medium">Medium</button>
+        <button class="opt-pill low" data-val="low">Low</button>
+      </div>
+    </div>
+    <div class="opts-section">
+      <div class="opts-label">When</div>
+      <div class="opts-row" id="add-time-opts">
+        <button class="opt-pill now" data-val="now">Now</button>
+        <button class="opt-pill soon" data-val="soon">Soon</button>
+        <button class="opt-pill later selected later" data-val="later">Later</button>
+      </div>
+    </div>
+    <div class="opts-section">
+      <div class="opts-label">Tags</div>
+      <input class="tag-input" id="add-tag-input" type="text" placeholder="home, work, personal…" autocomplete="off" autocorrect="off" autocapitalize="none">
+    </div>
+    <div class="sheet-hint"><span>Quick syntax:</span> &nbsp;#tag &nbsp; !high &nbsp; today / soon / later</div>
+    <button class="submit-btn" id="submit-add">Add Task</button>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="edit-overlay"></div>
+<div class="sheet" id="edit-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-label">Edit Task</div>
+  <div class="sheet-body">
+    <input class="sheet-input" id="edit-task-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="sentences">
+    <div class="opts-section">
+      <div class="opts-label">Priority</div>
+      <div class="opts-row" id="edit-priority-opts">
+        <button class="opt-pill critical" data-val="critical">Critical</button>
+        <button class="opt-pill high" data-val="high">High</button>
+        <button class="opt-pill medium" data-val="medium">Medium</button>
+        <button class="opt-pill low" data-val="low">Low</button>
+      </div>
+    </div>
+    <div class="opts-section">
+      <div class="opts-label">When</div>
+      <div class="opts-row" id="edit-time-opts">
+        <button class="opt-pill now" data-val="now">Now</button>
+        <button class="opt-pill soon" data-val="soon">Soon</button>
+        <button class="opt-pill later" data-val="later">Later</button>
+      </div>
+    </div>
+    <div class="opts-section">
+      <div class="opts-label">Tags</div>
+      <input class="tag-input" id="edit-tag-input" type="text" placeholder="home, work, personal…" autocomplete="off" autocorrect="off" autocapitalize="none">
+    </div>
+    <button class="submit-btn" id="submit-edit">Save Changes</button>
+    <button class="submit-btn danger" id="delete-btn">Delete Task</button>
+  </div>
+</div>
+
+<script>
+var tasks=JSON.parse(localStorage.getItem('tasks_v3')||'[]');
+var currentView='home',editingId=null;
+var addPriority='medium',addTime='later';
+var editPriority='medium',editTime='later';
+var filterPriority='',filterTime='';
+
+function save(){localStorage.setItem('tasks_v3',JSON.stringify(tasks));}
+function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function parseInput(raw){
+  var title=raw,tags=[],priority=null,time_bucket=null;
+  title=title.replace(/#(\w+)/g,function(_,t){tags.push(t.toLowerCase());return '';});
+  var pMap={critical:'critical',high:'high',medium:'medium',med:'medium',low:'low'};
+  title=title.replace(/!(\w+)/g,function(_,p){if(pMap[p.toLowerCase()])priority=pMap[p.toLowerCase()];return '';});
+  var timeMap=[
+    {re:/\b(today|now|immediately|asap)\b/i,val:'now'},
+    {re:/\b(soon|this week|shortly)\b/i,val:'soon'},
+    {re:/\b(later|someday|eventually|backlog)\b/i,val:'later'}
+  ];
+  for(var i=0;i<timeMap.length;i++){
+    title=title.replace(timeMap[i].re,function(){time_bucket=timeMap[i].val;return '';});
+  }
+  return {title:title.replace(/\s+/g,' ').trim(),tags:tags,priority:priority,time_bucket:time_bucket};
+}
+
+var addOverlay=document.getElementById('add-overlay');
+var addSheet=document.getElementById('add-sheet');
+var taskInput=document.getElementById('task-input');
+var addTagInput=document.getElementById('add-tag-input');
+var parsePreview=document.getElementById('parse-preview');
+
+function openAdd(){
+  taskInput.value='';addTagInput.value='';parsePreview.innerHTML='';
+  setAddPriority('medium');setAddTime('later');
+  addOverlay.classList.add('open');addSheet.classList.add('open');
+  setTimeout(function(){taskInput.focus();},350);
+}
+function closeAdd(){addSheet.classList.remove('open');addOverlay.classList.remove('open');}
+
+document.getElementById('open-add').onclick=openAdd;
+addOverlay.onclick=closeAdd;
+
+document.getElementById('add-priority-opts').querySelectorAll('.opt-pill').forEach(function(b){b.onclick=function(){setAddPriority(b.dataset.val);};});
+function setAddPriority(v){
+  addPriority=v;
+  document.getElementById('add-priority-opts').querySelectorAll('.opt-pill').forEach(function(b){
+    b.className='opt-pill '+b.dataset.val+(b.dataset.val===v?' selected':'');
+  });
+}
+document.getElementById('add-time-opts').querySelectorAll('.opt-pill').forEach(function(b){b.onclick=function(){setAddTime(b.dataset.val);};});
+function setAddTime(v){
+  addTime=v;
+  document.getElementById('add-time-opts').querySelectorAll('.opt-pill').forEach(function(b){
+    b.className='opt-pill '+b.dataset.val+(b.dataset.val===v?' selected':'');
+  });
+}
+
+var pStyles={critical:'color:var(--critical);background:var(--critical-bg);border:1px solid var(--critical-border)',high:'color:var(--high);background:var(--high-bg);border:1px solid var(--high-border)',medium:'color:var(--medium);background:var(--medium-bg);border:1px solid var(--medium-border)',low:'color:var(--text-muted);background:var(--low-bg);border:1px solid var(--low-border)'};
+var tStyles={now:'color:var(--now);background:rgba(0,212,255,.09);border:1px solid rgba(0,212,255,.22)',soon:'color:var(--soon);background:rgba(167,139,250,.09);border:1px solid rgba(167,139,250,.22)',later:'color:var(--text-muted);border:1px solid var(--border)'};
+
+taskInput.addEventListener('input',function(){
+  var p=parseInput(taskInput.value);
+  parsePreview.innerHTML='';
+  if(p.priority){addChip(parsePreview,'!'+p.priority,pStyles[p.priority]||'');setAddPriority(p.priority);}
+  if(p.time_bucket){addChip(parsePreview,p.time_bucket,tStyles[p.time_bucket]||'');setAddTime(p.time_bucket);}
+  p.tags.forEach(function(t){addChip(parsePreview,'#'+t,'color:var(--text-muted);background:var(--surface3);border:1px solid var(--border)');});
+});
+
+function addChip(el,text,style){var c=document.createElement('span');c.className='parse-chip';c.style.cssText=style;c.textContent=text;el.appendChild(c);}
+
+function submitAdd(){
+  var raw=taskInput.value.trim();if(!raw)return;
+  var parsed=parseInput(raw);
+  var extraTags=addTagInput.value.split(',').map(function(t){return t.trim().replace(/^#/,'');}).filter(Boolean);
+  var allTags=parsed.tags.concat(extraTags).filter(function(t,i,a){return a.indexOf(t)===i;});
+  tasks.unshift({id:uid(),title:parsed.title||raw,tags:allTags,priority:parsed.priority||addPriority,time_bucket:parsed.time_bucket||addTime,date:null,status:'active',created_at:Date.now()});
+  save();render();closeAdd();
+}
+document.getElementById('submit-add').onclick=submitAdd;
+taskInput.addEventListener('keydown',function(e){if(e.key==='Enter')submitAdd();});
+
+var editOverlay=document.getElementById('edit-overlay');
+var editSheet=document.getElementById('edit-sheet');
+var editInput=document.getElementById('edit-task-input');
+var editTagInput=document.getElementById('edit-tag-input');
+
+function openEdit(id){
+  var t=tasks.find(function(x){return x.id===id;});if(!t)return;
+  editingId=id;editInput.value=t.title;editTagInput.value=t.tags.join(', ');
+  setEditPriority(t.priority);setEditTime(t.time_bucket);
+  editOverlay.classList.add('open');editSheet.classList.add('open');
+  setTimeout(function(){editInput.focus();},350);
+}
+function closeEdit(){editSheet.classList.remove('open');editOverlay.classList.remove('open');editingId=null;}
+editOverlay.onclick=closeEdit;
+
+document.getElementById('edit-priority-opts').querySelectorAll('.opt-pill').forEach(function(b){b.onclick=function(){setEditPriority(b.dataset.val);};});
+function setEditPriority(v){editPriority=v;document.getElementById('edit-priority-opts').querySelectorAll('.opt-pill').forEach(function(b){b.className='opt-pill '+b.dataset.val+(b.dataset.val===v?' selected':'');});}
+document.getElementById('edit-time-opts').querySelectorAll('.opt-pill').forEach(function(b){b.onclick=function(){setEditTime(b.dataset.val);};});
+function setEditTime(v){editTime=v;document.getElementById('edit-time-opts').querySelectorAll('.opt-pill').forEach(function(b){b.className='opt-pill '+b.dataset.val+(b.dataset.val===v?' selected':'');});}
+
+document.getElementById('submit-edit').onclick=function(){
+  if(!editingId)return;
+  var idx=tasks.findIndex(function(t){return t.id===editingId;});if(idx===-1)return;
+  var newTitle=editInput.value.trim();
+  var extraTags=editTagInput.value.split(',').map(function(t){return t.trim().replace(/^#/,'');}).filter(Boolean);
+  if(newTitle)tasks[idx].title=newTitle;
+  tasks[idx].tags=extraTags;tasks[idx].priority=editPriority;tasks[idx].time_bucket=editTime;
+  save();render();closeEdit();
+};
+document.getElementById('delete-btn').onclick=function(){
+  if(!editingId)return;
+  tasks=tasks.filter(function(t){return t.id!==editingId;});save();render();closeEdit();
+};
+
+document.querySelectorAll('.nav-tab').forEach(function(btn){
+  btn.onclick=function(){
+    currentView=btn.dataset.view;
+    document.querySelectorAll('.nav-tab').forEach(function(b){b.classList.toggle('active',b===btn);});
+    document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('active',v.id==='view-'+currentView);});
+    render();
+  };
+});
+
+function makeCard(task){
+  var card=document.createElement('div');
+  card.className='task-card'+(task.status==='completed'?' completed':'');
+  var tl=task.time_bucket==='date'&&task.date?task.date:task.time_bucket;
+  var chips=task.tags.slice(0,2).map(function(t){return '<span class="tag-pill">#'+esc(t)+'</span>';}).join('');
+  card.innerHTML='<div class="task-card-inner"><button class="done-btn"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3.5 3.5 5.5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="priority-bar '+task.priority+'"></div><div class="task-body"><div class="task-title">'+esc(task.title)+'</div><div class="task-chips"><span class="time-chip '+task.time_bucket+'">'+tl+'</span>'+chips+'</div></div></div><div class="task-expanded"><div class="expanded-grid"><div class="expanded-cell"><span class="expanded-label">Priority</span><span class="expanded-val">'+task.priority+'</span></div><div class="expanded-cell"><span class="expanded-label">When</span><span class="expanded-val">'+task.time_bucket+'</span></div>'+(task.tags.length?'<div class="expanded-cell" style="grid-column:1/-1"><span class="expanded-label">Tags</span><span class="expanded-val">'+task.tags.map(function(t){return '#'+t;}).join(' ')+'</span></div>':'')+'<div class="expanded-cell" style="grid-column:1/-1"><span class="expanded-label">Added</span><span class="expanded-val">'+new Date(task.created_at).toLocaleDateString()+'</span></div></div><div class="expanded-actions"><button class="action-btn edit-btn">Edit</button><button class="action-btn danger del-btn">Delete</button></div></div>';
+  card.querySelector('.task-card-inner').addEventListener('click',function(e){if(e.target.closest('.done-btn'))return;card.classList.toggle('expanded');});
+  card.querySelector('.done-btn').onclick=function(e){e.stopPropagation();var t=tasks.find(function(x){return x.id===task.id;});if(t){t.status=t.status==='completed'?'active':'completed';save();render();}};
+  card.querySelector('.edit-btn').onclick=function(e){e.stopPropagation();openEdit(task.id);};
+  card.querySelector('.del-btn').onclick=function(e){e.stopPropagation();tasks=tasks.filter(function(x){return x.id!==task.id;});save();render();};
+  return card;
+}
+
+function makeSection(label,dotColor,items,wrap,emptyMsg){
+  wrap.innerHTML='';
+  if(!items.length&&!emptyMsg)return;
+  var sec=document.createElement('div');sec.className='section';
+  sec.innerHTML='<div class="section-header"><div class="section-dot" style="background:'+dotColor+'"></div><span class="section-label">'+label+'</span><span class="section-count">'+items.length+'</span></div><div class="task-list"></div>';
+  var list=sec.querySelector('.task-list');
+  if(!items.length)list.innerHTML='<div class="empty-section">'+emptyMsg+'</div>';
+  else items.forEach(function(t){list.appendChild(makeCard(t));});
+  wrap.appendChild(sec);
+}
+
+function makeCompletedSection(items,wrap){
+  wrap.innerHTML='';if(!items.length)return;
+  var tog=document.createElement('div');tog.className='completed-toggle';
+  tog.innerHTML='<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 5.5l3.5 3.5 3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Completed <span style="color:var(--border2)">'+items.length+'</span>';
+  var sec=document.createElement('div');sec.className='completed-section';
+  var list=document.createElement('div');list.className='task-list';list.style.paddingTop='8px';
+  items.forEach(function(t){list.appendChild(makeCard(t));});
+  sec.appendChild(list);
+  tog.onclick=function(){tog.classList.toggle('open');sec.classList.toggle('open');};
+  wrap.appendChild(tog);wrap.appendChild(sec);
+}
+
+function render(){
+  var active=tasks.filter(function(t){return t.status==='active';});
+  var done=tasks.filter(function(t){return t.status==='completed';});
+  if(currentView==='home'){
+    var focusNow=active.filter(function(t){return (t.priority==='critical'||t.priority==='high')&&t.time_bucket==='now';});
+    var comingUp=active.filter(function(t){return t.time_bucket==='soon';});
+    var impLater=active.filter(function(t){return (t.priority==='critical'||t.priority==='high')&&t.time_bucket==='later';});
+    makeSection('Focus Now','var(--now)',focusNow,document.getElementById('home-focus-wrap'),'Nothing urgent right now.');
+    makeSection('Coming Up','var(--soon)',comingUp,document.getElementById('home-coming-wrap'),null);
+    makeSection('Important Later','var(--high)',impLater,document.getElementById('home-later-wrap'),null);
+    makeCompletedSection(done,document.getElementById('home-done-wrap'));
+    var noContent=!focusNow.length&&!comingUp.length&&!impLater.length&&!done.length;
+    var ex=document.getElementById('home-empty');
+    if(noContent&&!ex){var e=document.createElement('div');e.className='empty-state';e.id='home-empty';e.innerHTML='<div class="empty-title">No tasks yet</div><div class="empty-sub">Tap + to capture your first task</div>';document.getElementById('view-home').appendChild(e);}
+    else if(!noContent&&ex)ex.remove();
+  }
+  if(currentView==='priority'){
+    makeSection('Critical','var(--critical)',active.filter(function(t){return t.priority==='critical';}),document.getElementById('pri-critical-wrap'),null);
+    makeSection('High','var(--high)',active.filter(function(t){return t.priority==='high';}),document.getElementById('pri-high-wrap'),null);
+    makeSection('Medium','var(--medium)',active.filter(function(t){return t.priority==='medium';}),document.getElementById('pri-medium-wrap'),null);
+    makeSection('Low','var(--low)',active.filter(function(t){return t.priority==='low';}),document.getElementById('pri-low-wrap'),null);
+    makeCompletedSection(done,document.getElementById('pri-done-wrap'));
+  }
+  if(currentView==='time'){
+    makeSection('Now','var(--now)',active.filter(function(t){return t.time_bucket==='now';}),document.getElementById('time-now-wrap'),null);
+    makeSection('Soon','var(--soon)',active.filter(function(t){return t.time_bucket==='soon';}),document.getElementById('time-soon-wrap'),null);
+    makeSection('Later','var(--later)',active.filter(function(t){return t.time_bucket==='later';}),document.getElementById('time-later-wrap'),null);
+    makeCompletedSection(done,document.getElementById('time-done-wrap'));
+  }
+  if(currentView==='all')renderAll();
+}
+
+function buildFilterRow(){
+  var row=document.getElementById('filter-row');row.innerHTML='';
+  var filters=[{label:'All',val:'',type:''},{label:'🔴 Critical',val:'critical',type:'p'},{label:'🟠 High',val:'high',type:'p'},{label:'🟡 Medium',val:'medium',type:'p'},{label:'⚪ Low',val:'low',type:'p'},{label:'⚡ Now',val:'now',type:'t'},{label:'🔜 Soon',val:'soon',type:'t'},{label:'📌 Later',val:'later',type:'t'}];
+  filters.forEach(function(f){
+    var btn=document.createElement('button');btn.className='filter-chip';
+    var isActive=f.val===''?(!filterPriority&&!filterTime):(f.type==='p'?filterPriority===f.val:filterTime===f.val);
+    if(isActive)btn.classList.add('active');
+    btn.textContent=f.label;
+    btn.onclick=function(){
+      if(f.val===''){filterPriority='';filterTime='';}
+      else if(f.type==='p'){filterPriority=filterPriority===f.val?'':f.val;filterTime='';}
+      else{filterTime=filterTime===f.val?'':f.val;filterPriority='';}
+      buildFilterRow();renderAll();
+    };
+    row.appendChild(btn);
+  });
+}
+
+function renderAll(){
+  buildFilterRow();
+  var q=(document.getElementById('search-input').value||'').toLowerCase();
+  var filtered=tasks.filter(function(t){
+    if(q&&!t.title.toLowerCase().includes(q)&&!t.tags.some(function(tg){return tg.includes(q);}))return false;
+    if(filterPriority&&t.priority!==filterPriority)return false;
+    if(filterTime&&t.time_bucket!==filterTime)return false;
+    return true;
+  });
+  var list=document.getElementById('all-list');list.innerHTML='';
+  if(!filtered.length){list.innerHTML='<div class="empty-state"><div class="empty-title">No tasks found</div><div class="empty-sub">Try a different filter</div></div>';return;}
+  var tl=document.createElement('div');tl.className='task-list';
+  filtered.forEach(function(t){tl.appendChild(makeCard(t));});
+  list.appendChild(tl);
+}
+
+document.getElementById('search-input').addEventListener('input',function(){if(currentView==='all')renderAll();});
+render();
+</script>
+</body>
+</html>
