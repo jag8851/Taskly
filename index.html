@@ -12,15 +12,11 @@
 <body>
 <div id="root"></div>
 
-<!-- React (CDN, no build step needed) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
-<!-- Babel standalone: transpiles the JSX below directly in the browser -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin></script>
-<!-- SheetJS: reads .xlsx/.csv files for the Import feature -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin></script>
 
-<!-- App source, inert (not executed directly) so we can control exactly how Babel transpiles it -->
 <script type="text/plain" id="app-source">
 const { useState, useEffect, useRef, useMemo, Component } = React;
 /* global XLSX */
@@ -49,30 +45,16 @@ const DEFAULT_CATEGORIES = [
   { id: "active", name: "Active", color: "#30B0C7" },
 ];
 
+const NONE_CATEGORY_ID = "none";
+const NONE_CATEGORY = { id: NONE_CATEGORY_ID, name: "Uncategorized", color: "#8E8E93" };
+
 const seed = (name, category, cost, location, setting, weather, prep, notes) => ({
   id: `seed-${Math.random().toString(36).slice(2, 10)}`,
   name, category, cost, location, setting, weather, prep, notes,
   done: false, doneDate: null,
 });
 
-const DEFAULT_ACTIVITIES = [
-  seed("Sunset at the Netherlands Carillon", "outdoors", [0], "Outdoor", "Away", "Good weather", "None", "Panoramic DC skyline view, few crowds. Right by Iwo Jima Memorial."),
-  seed("Forest walk on Roosevelt Island", "outdoors", [0], "Outdoor", "Away", "Good weather", "None", "Boardwalk trails, feels remote, 5 min from Rosslyn."),
-  seed("Sunset kayak from Key Bridge Boathouse", "outdoors", [2], "Outdoor", "Away", "Good weather", "Needs planning", "Rent a tandem kayak, roughly Apr-Oct season."),
-  seed("Sunrise hike at Great Falls Park", "outdoors", [0, 1], "Outdoor", "Away", "Good weather", "None", "Genuinely stunning, worth the early wake-up. Small park entrance fee, free if you walk in."),
-  seed("Planet Word museum", "museums", [0], "Indoor", "Away", "Any", "None", "Interactive and playful, not stuffy. Chinatown."),
-  seed("The Phillips Collection", "museums", [1, 2], "Indoor", "Away", "Any", "None", "Intimate mansion art collection in Dupont Circle."),
-  seed("National Building Museum", "museums", [1, 2], "Indoor", "Away", "Any", "None", "Grand hall, check the current seasonal installation."),
-  seed("Get dinner out", "food", [1, 2, 3], "Indoor", "Away", "Any", "None", "Flexible — pick a spot based on the mood, anywhere from casual to a nicer sit-down."),
-  seed("Food hall crawl at Union Market", "food", [1, 2], "Indoor", "Away", "Any", "None", "Share small plates across 3-4 vendors instead of one meal."),
-  seed("Brewery flight at Bluejacket", "food", [2], "Either", "Away", "Any", "None", "Walk the Capitol Riverfront boardwalk after."),
-  seed("Comedy show at DC Improv", "nightlife", [2], "Indoor", "Away", "Any", "Needs planning", "Book ahead, sells out on weekends. Dupont."),
-  seed("Upscale mini golf at Puttery", "nightlife", [2], "Indoor", "Away", "Any", "None", "Playful, high energy, good with cocktails."),
-  seed("Cook a themed dinner at home", "stayin", [1], "Indoor", "Home", "Any", "Needs planning", "Pick a country, follow one real recipe from that cuisine."),
-  seed("Blind wine or cheese tasting at home", "stayin", [1], "Indoor", "Home", "Any", "Needs planning", "Cover the labels, rank favorites together."),
-  seed("One-off pottery class", "classes", [2], "Indoor", "Away", "Any", "Needs planning", "Wheel-throwing class, messy and funny, good photos."),
-  seed("Rock climbing at Movement Gym", "active", [2], "Indoor", "Away", "Any", "None", "Crystal City or Rockville locations."),
-];
+const DEFAULT_ACTIVITIES = [];
 
 const COST_LABEL = ["Free", "$", "$$", "$$$", "$$$$"];
 const COST_VALUES = [0, 1, 2, 3, 4];
@@ -88,16 +70,14 @@ const WEATHERS = ["Any", "Good weather", "Rain OK"];
 const PREPS = ["None", "Needs planning"];
 const COUNT_PRESETS = [1, 3, 5, 10];
 
-// Guarantees every activity has a valid shape, whatever older/partial data it
-// came from (a past schema version, a bad import row, manual storage editing, etc.)
 function normalizeActivity(a, categories) {
-  const catIds = categories.map((c) => c.id);
+  const catIds = categories.map((c) => c.id).concat(NONE_CATEGORY_ID);
   const rawCost = Array.isArray(a?.cost) ? a.cost : a?.cost !== undefined ? [a.cost] : [1];
   const cleanCost = rawCost.filter((n) => Number.isInteger(n) && n >= 0 && n <= 4);
   return {
     id: a?.id || uid(),
     name: typeof a?.name === "string" && a.name.trim() ? a.name : "Untitled activity",
-    category: catIds.includes(a?.category) ? a.category : (catIds[0] || ""),
+    category: catIds.includes(a?.category) ? a.category : NONE_CATEGORY_ID,
     cost: cleanCost.length ? cleanCost : [1],
     location: LOCATIONS.includes(a?.location) ? a.location : "Indoor",
     setting: SETTINGS_OPT.includes(a?.setting) ? a.setting : "Away",
@@ -110,9 +90,6 @@ function normalizeActivity(a, categories) {
 }
 
 // ---------- Storage ----------
-// Real browser localStorage — persists per device/browser only (no server, no
-// sync between devices). Use the encrypted export/import in the Manage tab
-// to move data between devices or commit an updated copy to your repo.
 
 async function loadKey(key, fallback) {
   try {
@@ -134,10 +111,6 @@ async function saveKey(key, value) {
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 // ---------- Passcode + encryption ----------
-// Your passcode is never stored — only a SHA-256 hash of it, used to verify you
-// typed the right thing. The passcode itself is kept in memory for the session
-// and used to derive the AES key for encrypted backups, so a backup file you
-// export is genuinely unreadable without the passcode (not just hidden by the UI).
 
 async function sha256Hex(str) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
@@ -176,8 +149,6 @@ async function decryptBackup(blob, passphrase) {
   return JSON.parse(new TextDecoder().decode(pt));
 }
 
-// Name/path of the encrypted file committed to the repo, fetched relative to
-// wherever index.html is served from. Rename here if you want a different path.
 const SEED_FILE_NAME = "./data.json";
 
 async function fetchSeedBlob() {
@@ -188,7 +159,7 @@ async function fetchSeedBlob() {
     if (json && json.ct && json.iv && json.salt) return json;
     return null;
   } catch {
-    return null; // no file, offline, or not deployed yet — fall back to local/create flow
+    return null;
   }
 }
 
@@ -228,11 +199,9 @@ function parseCostMulti(raw) {
 
   const tiers = new Set();
   if (/free/i.test(s)) tiers.add(0);
-  // one or more runs of $ signs, e.g. "$-$$$", "$, $$$", "$$"
   const dollarRuns = s.match(/\${1,4}/g);
   if (dollarRuns) dollarRuns.forEach((run) => tiers.add(Math.min(4, run.length)));
   if (!dollarRuns && !tiers.size) {
-    // fall back to plain numbers, e.g. "1-3", "2", "1,2"
     const nums = s.match(/\d+/g);
     if (nums) nums.forEach((n) => tiers.add(Math.min(4, Math.max(0, parseInt(n, 10)))));
   }
@@ -292,14 +261,13 @@ function DateIdeaPicker() {
   const [categories, setCategories] = useState([]);
   const [theme, setTheme] = useState("light");
   const [accent, setAccent] = useState(ACCENT_PRESETS[0].hex);
-  const [page, setPage] = useState("picker"); // picker | manage | stats
+  const [page, setPage] = useState("picker");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
 
-  // passcode lock
-  const [passHash, setPassHash] = useState(null); // null until we know if a passcode exists
+  const [passHash, setPassHash] = useState(null);
   const [unlocked, setUnlocked] = useState(false);
-  const [lockMode, setLockMode] = useState("create"); // create | hash | seed
+  const [lockMode, setLockMode] = useState("create");
   const [pendingSeedBlob, setPendingSeedBlob] = useState(null);
   const [sessionPass, setSessionPass] = useState("");
   const [passInput, setPassInput] = useState("");
@@ -309,8 +277,6 @@ function DateIdeaPicker() {
   const [backupMsg, setBackupMsg] = useState("");
   const backupFileRef = useRef(null);
 
-
-  // filters
   const [catFilter, setCatFilter] = useState([]);
   const [costFilter, setCostFilter] = useState([]);
   const [locFilter, setLocFilter] = useState(null);
@@ -320,16 +286,13 @@ function DateIdeaPicker() {
   const [prepFilter, setPrepFilter] = useState(null);
   const [includeDone, setIncludeDone] = useState(false);
 
-  // count controls (shared state across the three UI variants)
   const [drawCount, setDrawCount] = useState(1);
 
-  // results
   const [shuffling, setShuffling] = useState(false);
-  const [results, setResults] = useState(null); // array
+  const [results, setResults] = useState(null);
   const [flip, setFlip] = useState(false);
   const [emptyNotice, setEmptyNotice] = useState(false);
 
-  // manage page
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState("");
@@ -338,9 +301,13 @@ function DateIdeaPicker() {
   const [newCatName, setNewCatName] = useState("");
   const [newCatColor, setNewCatColor] = useState(CATEGORY_PALETTE[0]);
 
-  // import
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [catSelectMode, setCatSelectMode] = useState(false);
+  const [selectedCatIds, setSelectedCatIds] = useState([]);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
   const [importOpen, setImportOpen] = useState(false);
-  const [importStep, setImportStep] = useState("upload"); // upload | map
+  const [importStep, setImportStep] = useState("upload");
   const [importRows, setImportRows] = useState([]);
   const [importHeaders, setImportHeaders] = useState([]);
   const [fieldMap, setFieldMap] = useState({});
@@ -366,26 +333,19 @@ function DateIdeaPicker() {
       const storedHash = await loadKey("dc-date:passHash", null);
 
       if (storedHash) {
-        // this device already has a passcode set locally — ask for it
         setPassHash(storedHash);
         setLockMode("hash");
       } else {
-        // no local passcode yet — check if the repo has a committed encrypted backup
         const seedBlob = await fetchSeedBlob();
         if (seedBlob) {
           setPendingSeedBlob(seedBlob);
           setLockMode("seed");
         } else {
-          // first-ever run on this device, nothing to unlock yet — show the
-          // normal "create a passcode" form
           setLockMode("create");
         }
       }
       const finalCats = cats && cats.length ? cats : DEFAULT_CATEGORIES;
       const rawActs = acts && acts.length ? acts : DEFAULT_ACTIVITIES;
-      // repair any activity saved under an older data shape (cost as a plain
-      // number, missing fields, an invalid enum value, a category id that no
-      // longer exists, etc.) so old testing data can never crash the app
       let migrated = false;
       const finalActs = rawActs.map((a) => {
         const fixed = normalizeActivity(a, finalCats);
@@ -419,7 +379,7 @@ function DateIdeaPicker() {
   const T = useMemo(() => getTheme(theme, accent), [theme, accent]);
   const S = useMemo(() => mkStyles(T), [T]);
 
-  const catById = (id) => categories.find((c) => c.id === id);
+  const catById = (id) => (id === NONE_CATEGORY_ID ? NONE_CATEGORY : categories.find((c) => c.id === id));
 
   function matches(a) {
     if (!includeDone && a.done) return false;
@@ -469,8 +429,6 @@ function DateIdeaPicker() {
     setTimeout(() => {
       setResults(picks);
       setShuffling(false);
-      // branch on the actual number of picks, not the requested count —
-      // a request for several that resolves to one match should still flip-reveal
       if (picks.length === 1) setTimeout(() => setFlip(true), 30);
     }, 500);
   }
@@ -519,14 +477,44 @@ function DateIdeaPicker() {
       setFormError(`Couldn't save: ${err.message || "something went wrong"}. This is a bug — tell me exactly what you filled in and I'll fix it.`);
     }
   }
-  function addCategory() {
+ function addCategory() {
     if (!newCatName.trim()) return;
     persistCategories([...categories, { id: uid(), name: newCatName.trim(), color: newCatColor }]);
     setNewCatName("");
   }
-  function removeCategory(id) {
-    if (activities.some((a) => a.category === id)) return;
-    persistCategories(categories.filter((c) => c.id !== id));
+  function renameCategory(id, name) {
+    if (!name.trim()) return;
+    persistCategories(categories.map((c) => (c.id === id ? { ...c, name: name.trim() } : c)));
+  }
+  function recolorCategory(id, color) {
+    persistCategories(categories.map((c) => (c.id === id ? { ...c, color } : c)));
+  }
+
+  function requestDeleteCategory(cat) {
+    setCategoryToDelete(cat);
+  }
+  async function confirmDeleteCategory() {
+    if (!categoryToDelete) return;
+    const nextActs = activities.map((a) =>
+      a.category === categoryToDelete.id ? { ...a, category: NONE_CATEGORY_ID } : a
+    );
+    await persistActivities(nextActs);
+    await persistCategories(categories.filter((c) => c.id !== categoryToDelete.id));
+    setCategoryToDelete(null);
+  }
+  function toggleCatSelect(id) {
+    setSelectedCatIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  }
+  async function confirmBulkDeleteCategories() {
+    const idsToDelete = new Set(selectedCatIds);
+    const nextActs = activities.map((a) =>
+      idsToDelete.has(a.category) ? { ...a, category: NONE_CATEGORY_ID } : a
+    );
+    await persistActivities(nextActs);
+    await persistCategories(categories.filter((c) => !idsToDelete.has(c.id)));
+    setSelectedCatIds([]);
+    setCatSelectMode(false);
+    setBulkDeleteConfirm(false);
   }
 
   // ---------- Import ----------
@@ -715,7 +703,7 @@ function DateIdeaPicker() {
     setSettingsOpen(false);
   }
 
-  // ---------- Encrypted backup (export/import to sync via GitHub) ----------
+  // ---------- Encrypted backup ----------
 
   async function exportBackup() {
     setBackupBusy(true);
@@ -806,7 +794,6 @@ function DateIdeaPicker() {
         table { border-collapse: collapse; width: 100%; }
       `}</style>
 
-      {/* Top bar */}
       <div style={S.topbar}>
         <div style={S.tabs}>
           {[["picker", "Picker"], ["manage", "Manage"], ["stats", "Stats & History"]].map(([id, label]) => (
@@ -880,7 +867,13 @@ function DateIdeaPicker() {
           showCatManager={showCatManager} setShowCatManager={setShowCatManager}
           newCatName={newCatName} setNewCatName={setNewCatName}
           newCatColor={newCatColor} setNewCatColor={setNewCatColor}
-          addCategory={addCategory} removeCategory={removeCategory}
+          addCategory, renameCategory, recolorCategory, requestDeleteCategory, openImport,
+          renameCategory={renameCategory}
+          recolorCategory={recolorCategory}
+          requestDeleteCategory={requestDeleteCategory}
+          catSelectMode={catSelectMode} setCatSelectMode={setCatSelectMode}
+          selectedCatIds={selectedCatIds} toggleCatSelect={toggleCatSelect}
+          setBulkDeleteConfirm={setBulkDeleteConfirm}
           openImport={() => { setImportOpen(true); setImportStep("upload"); setImportError(""); }}
           exportBackup={exportBackup} handleBackupFile={handleBackupFile} backupFileRef={backupFileRef}
           backupBusy={backupBusy} backupMsg={backupMsg}
@@ -891,7 +884,6 @@ function DateIdeaPicker() {
         <StatsPage T={T} S={S} activities={activities} categories={categories} catById={catById} toggleDone={toggleDone} doneCount={doneCount} />
       )}
 
-      {/* Add/Edit modal */}
       {showForm && (
         <div style={S.overlay} onClick={() => setShowForm(false)}>
           <form style={S.formBox} onClick={(e) => e.stopPropagation()} onSubmit={submitForm}>
@@ -959,7 +951,6 @@ function DateIdeaPicker() {
         </div>
       )}
 
-      {/* Import modal */}
       {importOpen && (
         <div style={S.overlay} onClick={() => setImportOpen(false)}>
           <div style={{ ...S.formBox, maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
@@ -1027,11 +1018,43 @@ function DateIdeaPicker() {
           </div>
         </div>
       )}
+
+      {categoryToDelete && (
+        <div style={S.overlay} onClick={() => setCategoryToDelete(null)}>
+          <div style={{ ...S.formBox, maxWidth: 380, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 26, marginBottom: 8 }}>⚠️</div>
+            <div style={S.formTitle}>Delete "{categoryToDelete.name}"?</div>
+            <div style={{ color: T.textSecondary, fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>
+              Activities in this category will be moved to <strong>Uncategorized</strong>. This can't be undone.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button className="dc-btn" style={S.btnGhost} onClick={() => setCategoryToDelete(null)}>Cancel</button>
+              <button className="dc-btn" style={{ ...S.btnPrimary, background: "#FF3B30" }} onClick={confirmDeleteCategory}>Delete category</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkDeleteConfirm && (
+        <div style={S.overlay} onClick={() => setBulkDeleteConfirm(false)}>
+          <div style={{ ...S.formBox, maxWidth: 380, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 26, marginBottom: 8 }}>⚠️</div>
+            <div style={S.formTitle}>Delete {selectedCatIds.length} categories?</div>
+            <div style={{ color: T.textSecondary, fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>
+              Activities in these categories will be moved to <strong>Uncategorized</strong>. This can't be undone.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button className="dc-btn" style={S.btnGhost} onClick={() => setBulkDeleteConfirm(false)}>Cancel</button>
+              <button className="dc-btn" style={{ ...S.btnPrimary, background: "#FF3B30" }} onClick={confirmBulkDeleteCategories}>
+                Delete {selectedCatIds.length} categories
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// ---------- Picker Page ----------
 
 // ---------- Lock Screen ----------
 
@@ -1186,7 +1209,6 @@ function PickerPage(props) {
         )}
       </div>
 
-      {/* Count controls — three variants, all wired to the same value */}
       <div style={S.panel}>
         <div style={S.filterLabel}>How many activities?</div>
 
@@ -1271,9 +1293,46 @@ function ManagePage(props) {
     T, S, activities, allCount, search, setSearch, categories, catById,
     openAdd, openEdit, deleteActivity, toggleDone,
     showCatManager, setShowCatManager, newCatName, setNewCatName, newCatColor, setNewCatColor,
-    addCategory, removeCategory, openImport,
+    addCategory, requestDeleteCategory, openImport,
+    catSelectMode, setCatSelectMode, selectedCatIds, toggleCatSelect, setBulkDeleteConfirm,
     exportBackup, handleBackupFile, backupFileRef, backupBusy, backupMsg,
   } = props;
+
+ const [editingCatId, setEditingCatId] = useState(null);
+  const [editCatName, setEditCatName] = useState("");
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const sortedActivities = useMemo(() => {
+    if (!sortKey) return activities;
+    const arr = [...activities];
+    arr.sort((a, b) => {
+      let av, bv;
+      switch (sortKey) {
+        case "name": av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
+        case "category": av = (catById(a.category)?.name || "").toLowerCase(); bv = (catById(b.category)?.name || "").toLowerCase(); break;
+        case "cost": av = Math.min(...(a.cost || [1])); bv = Math.min(...(b.cost || [1])); break;
+        default: av = a[sortKey]; bv = b[sortKey];
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [activities, sortKey, sortDir, catById]);
+
+  function sortArrow(key) {
+    return sortKey === key ? (sortDir === "asc" ? " ▲" : " ▼") : "";
+  }
 
   return (
     <div style={S.pageInner}>
@@ -1310,13 +1369,56 @@ function ManagePage(props) {
 
       {showCatManager && (
         <div style={S.catManager} className="dc-in">
-          {categories.map((c) => (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={S.filterLabel}>Categories</div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              {catSelectMode && selectedCatIds.length > 0 && (
+                <button className="dc-btn" style={{ ...S.linkBtn, color: "#FF3B30" }} onClick={() => setBulkDeleteConfirm(true)}>
+                  Delete {selectedCatIds.length} selected
+                </button>
+              )}
+              <button
+                className="dc-btn" style={S.linkBtn}
+                onClick={() => { setCatSelectMode(!catSelectMode); }}
+              >
+                {catSelectMode ? "Done" : "Select multiple"}
+              </button>
+            </div>
+          </div>
+
+         {categories.map((c) => (
             <div key={c.id} style={S.catRow}>
-              <span style={{ ...S.dotSm, background: c.color }} />
-              <span style={{ flex: 1, color: T.text, fontSize: 13 }}>{c.name}</span>
-              <button className="dc-btn" style={S.xBtn} onClick={() => removeCategory(c.id)} title="Remove (only if unused)">✕</button>
+              {catSelectMode && (
+                <input type="checkbox" checked={selectedCatIds.includes(c.id)} onChange={() => toggleCatSelect(c.id)} />
+              )}
+              <span style={{ position: "relative" }}>
+                <span style={{ ...S.dotSm, background: c.color, cursor: "pointer", width: 14, height: 14 }}
+                  onClick={(e) => { e.currentTarget.nextSibling.click(); }} />
+                <input type="color" value={c.color}
+                  onChange={(e) => recolorCategory(c.id, e.target.value)}
+                  style={{ position: "absolute", opacity: 0, width: 14, height: 14, top: 0, left: 0, cursor: "pointer" }} />
+              </span>
+              {editingCatId === c.id ? (
+                <input autoFocus value={editCatName}
+                  onChange={(e) => setEditCatName(e.target.value)}
+                  onBlur={() => { renameCategory(c.id, editCatName); setEditingCatId(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { renameCategory(c.id, editCatName); setEditingCatId(null); }
+                    if (e.key === "Escape") setEditingCatId(null);
+                  }}
+                  style={{ ...S.input, margin: 0, padding: "3px 6px", fontSize: 13, flex: 1 }} />
+              ) : (
+                <span style={{ flex: 1, color: T.text, fontSize: 13, cursor: "text" }}
+                  onClick={() => { setEditingCatId(c.id); setEditCatName(c.name); }}>
+                  {c.name}
+                </span>
+              )}
+              {!catSelectMode && (
+                <button className="dc-btn" style={S.xBtn} onClick={() => requestDeleteCategory(c)} title="Delete category">✕</button>
+              )}
             </div>
           ))}
+
           <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input placeholder="New category name" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} style={{ ...S.input, flex: 1, minWidth: 140, margin: 0 }} />
             <div style={{ display: "flex", gap: 4 }}>
@@ -1334,18 +1436,18 @@ function ManagePage(props) {
           <thead>
             <tr>
               <th style={S.th}></th>
-              <th style={S.th}>Name</th>
-              <th style={S.th}>Category</th>
-              <th style={S.th}>Cost</th>
-              <th style={S.th}>Location</th>
-              <th style={S.th}>Setting</th>
-              <th style={S.th}>Weather</th>
-              <th style={S.th}>Prep</th>
+              <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("name")}>Name{sortArrow("name")}</th>
+              <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("category")}>Category{sortArrow("category")}</th>
+              <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("cost")}>Cost{sortArrow("cost")}</th>
+              <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("location")}>Location{sortArrow("location")}</th>
+              <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("setting")}>Setting{sortArrow("setting")}</th>
+              <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("weather")}>Weather{sortArrow("weather")}</th>
+              <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("prep")}>Prep{sortArrow("prep")}</th>
               <th style={S.th}></th>
             </tr>
           </thead>
           <tbody>
-            {activities.map((a) => (
+            {sortedActivities.map((a) => (
               <tr key={a.id} className="dc-row">
                 <td style={S.td}><input type="checkbox" checked={a.done} onChange={() => toggleDone(a.id)} /></td>
                 <td style={{ ...S.td, fontWeight: 500, textDecoration: a.done ? "line-through" : "none", opacity: a.done ? 0.5 : 1 }}>{a.name}</td>
@@ -1443,7 +1545,7 @@ function mkStyles(T) {
   return {
     T,
     page: { background: T.bg, minHeight: "100%", fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", color: T.text, boxSizing: "border-box" },
-    pageInner: { maxWidth: 900, margin: "0 auto", padding: "24px 20px 50px" },
+    pageInner: { maxWidth: 1400, width: "100%", boxSizing: "border-box", margin: "0 auto", padding: "24px clamp(16px, 4vw, 48px) 50px" },
     topbar: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.bg, zIndex: 10 },
     tabs: { display: "flex", gap: 4, background: T.bgSubtle, borderRadius: 10, padding: 4 },
     tab: { padding: "7px 14px", borderRadius: 8, fontSize: 13.5, fontWeight: 500, color: T.textSecondary },
@@ -1493,8 +1595,8 @@ function mkStyles(T) {
     xBtn: { background: "none", border: "none", color: T.textSecondary, fontSize: 12.5, padding: "3px 6px", fontWeight: 500 },
     listRow: { display: "flex", alignItems: "center", gap: 10, padding: "9px 6px", borderRadius: 6, borderBottom: `1px solid ${T.border}` },
     pill: { display: "inline-flex", alignItems: "center", gap: 6, background: T.bgSubtle, borderRadius: 999, padding: "3px 9px", fontSize: 12 },
-    tableWrap: { overflowX: "auto", border: `1px solid ${T.border}`, borderRadius: 12 },
-    th: { textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: T.textSecondary, padding: "10px 12px", borderBottom: `1px solid ${T.border}`, fontWeight: 600, whiteSpace: "nowrap" },
+    tableWrap: { overflow: "auto", border: `1px solid ${T.border}`, borderRadius: 12, maxHeight: "65vh" },
+    th: { textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: T.textSecondary, padding: "10px 12px", borderBottom: `1px solid ${T.border}`, fontWeight: 600, whiteSpace: "nowrap", position: "sticky", top: 0, background: T.surface, zIndex: 1 },
     td: { padding: "10px 12px", fontSize: 13, color: T.text, borderBottom: `1px solid ${T.border}`, whiteSpace: "nowrap" },
     overlay: { position: "fixed", inset: 0, background: T.overlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 },
     formBox: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto", boxShadow: T.shadow },
@@ -1505,8 +1607,6 @@ function mkStyles(T) {
 }
 
 // ---------- Error boundary ----------
-// Catches any render crash and shows the real error instead of a blank/frozen
-// screen, with an escape hatch to wipe local data if it's a data problem.
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -1561,9 +1661,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(<DateIdeaPickerWithB
 
 </script>
 
-<!-- Bootstrap: transpile with the classic JSX runtime (React.createElement),
-     not the automatic runtime, since a plain script tag can't resolve the
-     "import ... from react/jsx-runtime" the automatic runtime emits. -->
 <script>
   (function () {
     var source = document.getElementById("app-source").textContent;
