@@ -477,17 +477,10 @@ function DateIdeaPicker() {
       setFormError(`Couldn't save: ${err.message || "something went wrong"}. This is a bug — tell me exactly what you filled in and I'll fix it.`);
     }
   }
- function addCategory() {
+  function addCategory() {
     if (!newCatName.trim()) return;
     persistCategories([...categories, { id: uid(), name: newCatName.trim(), color: newCatColor }]);
     setNewCatName("");
-  }
-  function renameCategory(id, name) {
-    if (!name.trim()) return;
-    persistCategories(categories.map((c) => (c.id === id ? { ...c, name: name.trim() } : c)));
-  }
-  function recolorCategory(id, color) {
-    persistCategories(categories.map((c) => (c.id === id ? { ...c, color } : c)));
   }
 
   function requestDeleteCategory(cat) {
@@ -867,9 +860,7 @@ function DateIdeaPicker() {
           showCatManager={showCatManager} setShowCatManager={setShowCatManager}
           newCatName={newCatName} setNewCatName={setNewCatName}
           newCatColor={newCatColor} setNewCatColor={setNewCatColor}
-          addCategory, renameCategory, recolorCategory, requestDeleteCategory, openImport,
-          renameCategory={renameCategory}
-          recolorCategory={recolorCategory}
+          addCategory={addCategory}
           requestDeleteCategory={requestDeleteCategory}
           catSelectMode={catSelectMode} setCatSelectMode={setCatSelectMode}
           selectedCatIds={selectedCatIds} toggleCatSelect={toggleCatSelect}
@@ -1298,8 +1289,6 @@ function ManagePage(props) {
     exportBackup, handleBackupFile, backupFileRef, backupBusy, backupMsg,
   } = props;
 
- const [editingCatId, setEditingCatId] = useState(null);
-  const [editCatName, setEditCatName] = useState("");
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
 
@@ -1386,33 +1375,13 @@ function ManagePage(props) {
             </div>
           </div>
 
-         {categories.map((c) => (
+          {categories.map((c) => (
             <div key={c.id} style={S.catRow}>
               {catSelectMode && (
                 <input type="checkbox" checked={selectedCatIds.includes(c.id)} onChange={() => toggleCatSelect(c.id)} />
               )}
-              <span style={{ position: "relative" }}>
-                <span style={{ ...S.dotSm, background: c.color, cursor: "pointer", width: 14, height: 14 }}
-                  onClick={(e) => { e.currentTarget.nextSibling.click(); }} />
-                <input type="color" value={c.color}
-                  onChange={(e) => recolorCategory(c.id, e.target.value)}
-                  style={{ position: "absolute", opacity: 0, width: 14, height: 14, top: 0, left: 0, cursor: "pointer" }} />
-              </span>
-              {editingCatId === c.id ? (
-                <input autoFocus value={editCatName}
-                  onChange={(e) => setEditCatName(e.target.value)}
-                  onBlur={() => { renameCategory(c.id, editCatName); setEditingCatId(null); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") { renameCategory(c.id, editCatName); setEditingCatId(null); }
-                    if (e.key === "Escape") setEditingCatId(null);
-                  }}
-                  style={{ ...S.input, margin: 0, padding: "3px 6px", fontSize: 13, flex: 1 }} />
-              ) : (
-                <span style={{ flex: 1, color: T.text, fontSize: 13, cursor: "text" }}
-                  onClick={() => { setEditingCatId(c.id); setEditCatName(c.name); }}>
-                  {c.name}
-                </span>
-              )}
+              <span style={{ ...S.dotSm, background: c.color }} />
+              <span style={{ flex: 1, color: T.text, fontSize: 13 }}>{c.name}</span>
               {!catSelectMode && (
                 <button className="dc-btn" style={S.xBtn} onClick={() => requestDeleteCategory(c)} title="Delete category">✕</button>
               )}
