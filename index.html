@@ -1,457 +1,1578 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0e0f11">
-<title>Tasks</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DC Date Picker</title>
 <style>
-:root{--bg:#0e0f11;--surface:#16181c;--surface2:#1e2128;--surface3:#252930;--border:#2a2d35;--border2:#363b45;--text:#e8eaf0;--text-muted:#6b7280;--text-dim:#9aa0b0;--critical:#ff3b3b;--critical-bg:rgba(255,59,59,0.1);--critical-border:rgba(255,59,59,0.28);--high:#ff6b35;--high-bg:rgba(255,107,53,0.1);--high-border:rgba(255,107,53,0.28);--medium:#f0b429;--medium-bg:rgba(240,180,41,0.09);--medium-border:rgba(240,180,41,0.25);--low:#4a5568;--low-bg:rgba(74,85,104,0.18);--low-border:rgba(74,85,104,0.35);--now:#00d4ff;--soon:#a78bfa;--later:#4a5568;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--nav-h:60px}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;overflow:hidden;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-.app{display:flex;flex-direction:column;height:100%;padding-top:var(--safe-top)}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:52px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg)}
-.wordmark{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:.18em;color:var(--text);text-transform:uppercase}
-.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:16px 16px 0;padding-bottom:calc(var(--nav-h) + var(--safe-bottom) + 88px)}
-.view{display:none}.view.active{display:block}
-.section{margin-bottom:28px}
-.section-header{display:flex;align-items:center;gap:9px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid var(--border)}
-.section-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
-.section-count{font-family:var(--mono);font-size:10px;color:var(--border2);margin-left:auto}
-.task-list{display:flex;flex-direction:column;gap:5px}
-.empty-section{font-family:var(--mono);font-size:11px;color:var(--border2);padding:12px 0}
-.task-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .13s;user-select:none}
-.task-card.expanded{border-color:var(--border2)}
-.task-card-inner{display:flex;align-items:center;gap:11px;padding:13px 14px;min-height:56px}
-.done-btn{width:26px;height:26px;border-radius:7px;border:1.5px solid var(--border2);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:transparent;transition:all .13s}
-.done-btn:active{background:var(--surface3)}
-.task-card.completed .done-btn{background:var(--surface3);color:var(--text-muted)}
-.priority-bar{width:3px;height:24px;border-radius:2px;flex-shrink:0}
-.priority-bar.critical{background:var(--critical)}.priority-bar.high{background:var(--high)}.priority-bar.medium{background:var(--medium)}.priority-bar.low{background:var(--low)}
-.task-body{flex:1;min-width:0}
-.task-title{font-size:15px;font-weight:400;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
-.task-card.completed .task-title{text-decoration:line-through;color:var(--text-muted)}
-.task-chips{display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap}
-.time-chip{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
-.time-chip.now{color:var(--now);background:rgba(0,212,255,.09);border:1px solid rgba(0,212,255,.22)}
-.time-chip.soon{color:var(--soon);background:rgba(167,139,250,.09);border:1px solid rgba(167,139,250,.22)}
-.time-chip.later{color:var(--text-muted);background:transparent;border:1px solid var(--border)}
-.time-chip.date{color:var(--soon);background:rgba(167,139,250,.09);border:1px solid rgba(167,139,250,.22)}
-.tag-pill{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;color:var(--text-muted);background:var(--surface3);border:1px solid var(--border)}
-.task-expanded{display:none;padding:0 14px 14px 54px;border-top:1px solid var(--border)}
-.task-card.expanded .task-expanded{display:block}
-.expanded-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 0;margin-top:12px}
-.expanded-cell{display:flex;flex-direction:column;gap:2px}
-.expanded-label{font-family:var(--mono);font-size:9px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase}
-.expanded-val{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
-.expanded-actions{display:flex;gap:8px;margin-top:14px}
-.action-btn{flex:1;padding:11px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-muted);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
-.action-btn:active{background:var(--surface2);color:var(--text)}
-.action-btn.danger:active{background:var(--critical-bg);color:var(--critical);border-color:var(--critical-border)}
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:stretch;z-index:200}
-.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:none;border:none;cursor:pointer;color:var(--text-muted);transition:color .13s;padding:0;min-height:44px}
-.nav-tab.active{color:var(--text)}.nav-tab:active{opacity:.7}
-.nav-tab-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;line-height:1}
-.fab{position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 16px);right:20px;width:58px;height:58px;border-radius:17px;background:var(--text);color:var(--bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:201;box-shadow:0 4px 24px rgba(0,0,0,.55),0 1px 4px rgba(0,0,0,.3);transition:transform .13s,opacity .13s}
-.fab:active{transform:scale(.91);opacity:.9}
-.sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:300;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.sheet-overlay.open{display:block}
-.sheet{position:fixed;bottom:0;left:0;right:0;background:var(--surface2);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);z-index:301;padding-bottom:calc(24px + var(--safe-bottom));transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:94vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.sheet.open{transform:translateY(0)}
-.sheet-handle{width:38px;height:4px;background:var(--border2);border-radius:2px;margin:13px auto 0}
-.sheet-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);text-align:center;padding:14px 20px 0}
-.sheet-body{padding:16px 20px 0}
-.sheet-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-family:var(--sans);font-size:17px;padding:14px 16px;outline:none;transition:border-color .13s;caret-color:var(--now);-webkit-appearance:none;appearance:none}
-.sheet-input:focus{border-color:rgba(0,212,255,.4)}.sheet-input::placeholder{color:var(--border2)}
-.parse-row{display:flex;flex-wrap:wrap;gap:5px;min-height:24px;margin-top:10px}
-.parse-chip{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:5px;animation:chipIn .12s ease}
-@keyframes chipIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
-.opts-section{margin-top:18px}
-.opts-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
-.opts-row{display:flex;gap:7px;flex-wrap:wrap}
-.opt-pill{padding:9px 15px;border-radius:9px;border:1px solid var(--border);background:none;color:var(--text-muted);font-family:var(--mono);font-size:12px;cursor:pointer;letter-spacing:.04em;min-height:40px}
-.opt-pill:active{opacity:.7}
-.opt-pill.selected{color:var(--text)}
-.opt-pill.selected.critical{border-color:var(--critical);background:var(--critical-bg);color:var(--critical)}
-.opt-pill.selected.high{border-color:var(--high);background:var(--high-bg);color:var(--high)}
-.opt-pill.selected.medium{border-color:var(--medium);background:var(--medium-bg);color:var(--medium)}
-.opt-pill.selected.low{border-color:var(--low);background:var(--low-bg);color:var(--text-muted)}
-.opt-pill.selected.now{border-color:var(--now);background:rgba(0,212,255,.08);color:var(--now)}
-.opt-pill.selected.soon{border-color:var(--soon);background:rgba(167,139,250,.08);color:var(--soon)}
-.opt-pill.selected.later{border-color:var(--border2);color:var(--text-dim)}
-.tag-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:var(--mono);font-size:13px;padding:11px 13px;outline:none;-webkit-appearance:none;transition:border-color .13s}
-.tag-input:focus{border-color:var(--border2)}.tag-input::placeholder{color:var(--border2);font-size:12px}
-.sheet-hint{font-family:var(--mono);font-size:10px;color:var(--border2);margin-top:10px;line-height:1.8}
-.sheet-hint span{color:var(--text-muted)}
-.submit-btn{width:100%;background:var(--text);color:var(--bg);border:none;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.08em;padding:16px;border-radius:12px;cursor:pointer;text-transform:uppercase;margin-top:20px}
-.submit-btn:active{opacity:.82}
-.submit-btn.danger{background:none;color:var(--critical);border:1px solid var(--critical-border);margin-top:10px}
-.search-bar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
-.search-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--sans);font-size:15px;padding:12px 14px;outline:none;-webkit-appearance:none}
-.search-input::placeholder{color:var(--text-muted)}
-.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
-.filter-row::-webkit-scrollbar{display:none}
-.filter-chip{padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-muted);font-family:var(--mono);font-size:11px;white-space:nowrap;cursor:pointer;min-height:36px}
-.filter-chip.active{background:var(--surface3);color:var(--text);border-color:var(--border2)}
-.completed-toggle{display:flex;align-items:center;gap:9px;padding:14px 0;color:var(--text-muted);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-top:1px solid var(--border);margin-top:8px;user-select:none}
-.completed-toggle svg{transition:transform .2s}
-.completed-toggle.open svg{transform:rotate(90deg)}
-.completed-section{display:none}.completed-section.open{display:block;padding-top:8px}
-.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:8px;text-align:center}
-.empty-title{font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:.08em}
-.empty-sub{font-family:var(--mono);font-size:11px;color:var(--border2)}
-::-webkit-scrollbar{width:0}
+  html, body { margin: 0; padding: 0; background: #FFFFFF; }
+  #root { min-height: 100vh; }
 </style>
 </head>
 <body>
-<div class="app">
-  <header class="topbar"><span class="wordmark">Tasks</span></header>
-  <div class="scroll-area">
-    <div class="view active" id="view-home">
-      <div id="home-focus-wrap"></div><div id="home-coming-wrap"></div>
-      <div id="home-later-wrap"></div><div id="home-done-wrap"></div>
-    </div>
-    <div class="view" id="view-priority">
-      <div id="pri-critical-wrap"></div><div id="pri-high-wrap"></div>
-      <div id="pri-medium-wrap"></div><div id="pri-low-wrap"></div><div id="pri-done-wrap"></div>
-    </div>
-    <div class="view" id="view-time">
-      <div id="time-now-wrap"></div><div id="time-soon-wrap"></div>
-      <div id="time-later-wrap"></div><div id="time-done-wrap"></div>
-    </div>
-    <div class="view" id="view-all">
-      <div class="search-bar">
-        <input class="search-input" id="search-input" type="search" placeholder="Search tasks…" autocomplete="off" autocorrect="off" spellcheck="false">
-        <div class="filter-row" id="filter-row"></div>
-      </div>
-      <div id="all-list"></div>
-    </div>
-  </div>
-  <nav class="bottom-nav">
-    <button class="nav-tab active" data-view="home">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 10.5L11 3l8 7.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1v-8.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 20v-7h6v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-      <span class="nav-tab-label">Home</span>
-    </button>
-    <button class="nav-tab" data-view="priority">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="5.5" r="2" fill="currentColor"/><circle cx="11" cy="11" r="2" fill="currentColor" opacity=".55"/><circle cx="11" cy="16.5" r="2" fill="currentColor" opacity=".25"/><path d="M15 5.5h2M15 11h2M15 16.5h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <span class="nav-tab-label">Priority</span>
-    </button>
-    <button class="nav-tab" data-view="time">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M11 7v4l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="nav-tab-label">Time</span>
-    </button>
-    <button class="nav-tab" data-view="all">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M14 14L19 19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <span class="nav-tab-label">All</span>
-    </button>
-  </nav>
-</div>
+<div id="root"></div>
 
-<button class="fab" id="open-add">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-</button>
+<!-- React (CDN, no build step needed) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+<!-- Babel standalone: transpiles the JSX below directly in the browser -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin></script>
+<!-- SheetJS: reads .xlsx/.csv files for the Import feature -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin></script>
 
-<div class="sheet-overlay" id="add-overlay"></div>
-<div class="sheet" id="add-sheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-label">New Task</div>
-  <div class="sheet-body">
-    <input class="sheet-input" id="task-input" type="text" placeholder="What needs doing?" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false">
-    <div class="parse-row" id="parse-preview"></div>
-    <div class="opts-section">
-      <div class="opts-label">Priority</div>
-      <div class="opts-row" id="add-priority-opts">
-        <button class="opt-pill critical" data-val="critical">Critical</button>
-        <button class="opt-pill high" data-val="high">High</button>
-        <button class="opt-pill medium selected medium" data-val="medium">Medium</button>
-        <button class="opt-pill low" data-val="low">Low</button>
-      </div>
-    </div>
-    <div class="opts-section">
-      <div class="opts-label">When</div>
-      <div class="opts-row" id="add-time-opts">
-        <button class="opt-pill now" data-val="now">Now</button>
-        <button class="opt-pill soon" data-val="soon">Soon</button>
-        <button class="opt-pill later selected later" data-val="later">Later</button>
-      </div>
-    </div>
-    <div class="opts-section">
-      <div class="opts-label">Tags</div>
-      <input class="tag-input" id="add-tag-input" type="text" placeholder="home, work, personal…" autocomplete="off" autocorrect="off" autocapitalize="none">
-    </div>
-    <div class="sheet-hint"><span>Quick syntax:</span> &nbsp;#tag &nbsp; !high &nbsp; today / soon / later</div>
-    <button class="submit-btn" id="submit-add">Add Task</button>
-  </div>
-</div>
+<!-- App source, inert (not executed directly) so we can control exactly how Babel transpiles it -->
+<script type="text/plain" id="app-source">
+const { useState, useEffect, useRef, useMemo, Component } = React;
+/* global XLSX */
 
-<div class="sheet-overlay" id="edit-overlay"></div>
-<div class="sheet" id="edit-sheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-label">Edit Task</div>
-  <div class="sheet-body">
-    <input class="sheet-input" id="edit-task-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="sentences">
-    <div class="opts-section">
-      <div class="opts-label">Priority</div>
-      <div class="opts-row" id="edit-priority-opts">
-        <button class="opt-pill critical" data-val="critical">Critical</button>
-        <button class="opt-pill high" data-val="high">High</button>
-        <button class="opt-pill medium" data-val="medium">Medium</button>
-        <button class="opt-pill low" data-val="low">Low</button>
-      </div>
-    </div>
-    <div class="opts-section">
-      <div class="opts-label">When</div>
-      <div class="opts-row" id="edit-time-opts">
-        <button class="opt-pill now" data-val="now">Now</button>
-        <button class="opt-pill soon" data-val="soon">Soon</button>
-        <button class="opt-pill later" data-val="later">Later</button>
-      </div>
-    </div>
-    <div class="opts-section">
-      <div class="opts-label">Tags</div>
-      <input class="tag-input" id="edit-tag-input" type="text" placeholder="home, work, personal…" autocomplete="off" autocorrect="off" autocapitalize="none">
-    </div>
-    <button class="submit-btn" id="submit-edit">Save Changes</button>
-    <button class="submit-btn danger" id="delete-btn">Delete Task</button>
-  </div>
-</div>
+// ---------- Palettes ----------
 
-<script>
-var tasks=JSON.parse(localStorage.getItem('tasks_v3')||'[]');
-var currentView='home',editingId=null;
-var addPriority='medium',addTime='later';
-var editPriority='medium',editTime='later';
-var filterPriority='',filterTime='';
+const CATEGORY_PALETTE = ["#34C759", "#007AFF", "#AF52DE", "#FF9500", "#8E8E93", "#FF2D55", "#30B0C7", "#5856D6", "#FF3B30", "#FFCC00"];
+const ACCENT_PRESETS = [
+  { name: "Blue", hex: "#0071E3" },
+  { name: "Green", hex: "#34C759" },
+  { name: "Orange", hex: "#FF9500" },
+  { name: "Red", hex: "#FF3B30" },
+  { name: "Purple", hex: "#AF52DE" },
+  { name: "Pink", hex: "#FF2D55" },
+  { name: "Teal", hex: "#30B0C7" },
+  { name: "Graphite", hex: "#3A3A3C" },
+];
 
-function save(){localStorage.setItem('tasks_v3',JSON.stringify(tasks));}
-function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+const DEFAULT_CATEGORIES = [
+  { id: "outdoors", name: "Outdoors & Views", color: "#34C759" },
+  { id: "museums", name: "Museums & Culture", color: "#007AFF" },
+  { id: "food", name: "Food & Drink", color: "#FF3B30" },
+  { id: "nightlife", name: "Nightlife & Entertainment", color: "#AF52DE" },
+  { id: "stayin", name: "Stay-In", color: "#8E8E93" },
+  { id: "classes", name: "Classes & Workshops", color: "#FF2D55" },
+  { id: "active", name: "Active", color: "#30B0C7" },
+];
 
-function parseInput(raw){
-  var title=raw,tags=[],priority=null,time_bucket=null;
-  title=title.replace(/#(\w+)/g,function(_,t){tags.push(t.toLowerCase());return '';});
-  var pMap={critical:'critical',high:'high',medium:'medium',med:'medium',low:'low'};
-  title=title.replace(/!(\w+)/g,function(_,p){if(pMap[p.toLowerCase()])priority=pMap[p.toLowerCase()];return '';});
-  var timeMap=[
-    {re:/\b(today|now|immediately|asap)\b/i,val:'now'},
-    {re:/\b(soon|this week|shortly)\b/i,val:'soon'},
-    {re:/\b(later|someday|eventually|backlog)\b/i,val:'later'}
-  ];
-  for(var i=0;i<timeMap.length;i++){
-    title=title.replace(timeMap[i].re,function(){time_bucket=timeMap[i].val;return '';});
-  }
-  return {title:title.replace(/\s+/g,' ').trim(),tags:tags,priority:priority,time_bucket:time_bucket};
-}
-
-var addOverlay=document.getElementById('add-overlay');
-var addSheet=document.getElementById('add-sheet');
-var taskInput=document.getElementById('task-input');
-var addTagInput=document.getElementById('add-tag-input');
-var parsePreview=document.getElementById('parse-preview');
-
-function openAdd(){
-  taskInput.value='';addTagInput.value='';parsePreview.innerHTML='';
-  setAddPriority('medium');setAddTime('later');
-  addOverlay.classList.add('open');addSheet.classList.add('open');
-  setTimeout(function(){taskInput.focus();},350);
-}
-function closeAdd(){addSheet.classList.remove('open');addOverlay.classList.remove('open');}
-
-document.getElementById('open-add').onclick=openAdd;
-addOverlay.onclick=closeAdd;
-
-document.getElementById('add-priority-opts').querySelectorAll('.opt-pill').forEach(function(b){b.onclick=function(){setAddPriority(b.dataset.val);};});
-function setAddPriority(v){
-  addPriority=v;
-  document.getElementById('add-priority-opts').querySelectorAll('.opt-pill').forEach(function(b){
-    b.className='opt-pill '+b.dataset.val+(b.dataset.val===v?' selected':'');
-  });
-}
-document.getElementById('add-time-opts').querySelectorAll('.opt-pill').forEach(function(b){b.onclick=function(){setAddTime(b.dataset.val);};});
-function setAddTime(v){
-  addTime=v;
-  document.getElementById('add-time-opts').querySelectorAll('.opt-pill').forEach(function(b){
-    b.className='opt-pill '+b.dataset.val+(b.dataset.val===v?' selected':'');
-  });
-}
-
-var pStyles={critical:'color:var(--critical);background:var(--critical-bg);border:1px solid var(--critical-border)',high:'color:var(--high);background:var(--high-bg);border:1px solid var(--high-border)',medium:'color:var(--medium);background:var(--medium-bg);border:1px solid var(--medium-border)',low:'color:var(--text-muted);background:var(--low-bg);border:1px solid var(--low-border)'};
-var tStyles={now:'color:var(--now);background:rgba(0,212,255,.09);border:1px solid rgba(0,212,255,.22)',soon:'color:var(--soon);background:rgba(167,139,250,.09);border:1px solid rgba(167,139,250,.22)',later:'color:var(--text-muted);border:1px solid var(--border)'};
-
-taskInput.addEventListener('input',function(){
-  var p=parseInput(taskInput.value);
-  parsePreview.innerHTML='';
-  if(p.priority){addChip(parsePreview,'!'+p.priority,pStyles[p.priority]||'');setAddPriority(p.priority);}
-  if(p.time_bucket){addChip(parsePreview,p.time_bucket,tStyles[p.time_bucket]||'');setAddTime(p.time_bucket);}
-  p.tags.forEach(function(t){addChip(parsePreview,'#'+t,'color:var(--text-muted);background:var(--surface3);border:1px solid var(--border)');});
+const seed = (name, category, cost, location, setting, weather, prep, notes) => ({
+  id: `seed-${Math.random().toString(36).slice(2, 10)}`,
+  name, category, cost, location, setting, weather, prep, notes,
+  done: false, doneDate: null,
 });
 
-function addChip(el,text,style){var c=document.createElement('span');c.className='parse-chip';c.style.cssText=style;c.textContent=text;el.appendChild(c);}
+const DEFAULT_ACTIVITIES = [
+  seed("Sunset at the Netherlands Carillon", "outdoors", [0], "Outdoor", "Away", "Good weather", "None", "Panoramic DC skyline view, few crowds. Right by Iwo Jima Memorial."),
+  seed("Forest walk on Roosevelt Island", "outdoors", [0], "Outdoor", "Away", "Good weather", "None", "Boardwalk trails, feels remote, 5 min from Rosslyn."),
+  seed("Sunset kayak from Key Bridge Boathouse", "outdoors", [2], "Outdoor", "Away", "Good weather", "Needs planning", "Rent a tandem kayak, roughly Apr-Oct season."),
+  seed("Sunrise hike at Great Falls Park", "outdoors", [0, 1], "Outdoor", "Away", "Good weather", "None", "Genuinely stunning, worth the early wake-up. Small park entrance fee, free if you walk in."),
+  seed("Planet Word museum", "museums", [0], "Indoor", "Away", "Any", "None", "Interactive and playful, not stuffy. Chinatown."),
+  seed("The Phillips Collection", "museums", [1, 2], "Indoor", "Away", "Any", "None", "Intimate mansion art collection in Dupont Circle."),
+  seed("National Building Museum", "museums", [1, 2], "Indoor", "Away", "Any", "None", "Grand hall, check the current seasonal installation."),
+  seed("Get dinner out", "food", [1, 2, 3], "Indoor", "Away", "Any", "None", "Flexible — pick a spot based on the mood, anywhere from casual to a nicer sit-down."),
+  seed("Food hall crawl at Union Market", "food", [1, 2], "Indoor", "Away", "Any", "None", "Share small plates across 3-4 vendors instead of one meal."),
+  seed("Brewery flight at Bluejacket", "food", [2], "Either", "Away", "Any", "None", "Walk the Capitol Riverfront boardwalk after."),
+  seed("Comedy show at DC Improv", "nightlife", [2], "Indoor", "Away", "Any", "Needs planning", "Book ahead, sells out on weekends. Dupont."),
+  seed("Upscale mini golf at Puttery", "nightlife", [2], "Indoor", "Away", "Any", "None", "Playful, high energy, good with cocktails."),
+  seed("Cook a themed dinner at home", "stayin", [1], "Indoor", "Home", "Any", "Needs planning", "Pick a country, follow one real recipe from that cuisine."),
+  seed("Blind wine or cheese tasting at home", "stayin", [1], "Indoor", "Home", "Any", "Needs planning", "Cover the labels, rank favorites together."),
+  seed("One-off pottery class", "classes", [2], "Indoor", "Away", "Any", "Needs planning", "Wheel-throwing class, messy and funny, good photos."),
+  seed("Rock climbing at Movement Gym", "active", [2], "Indoor", "Away", "Any", "None", "Crystal City or Rockville locations."),
+];
 
-function submitAdd(){
-  var raw=taskInput.value.trim();if(!raw)return;
-  var parsed=parseInput(raw);
-  var extraTags=addTagInput.value.split(',').map(function(t){return t.trim().replace(/^#/,'');}).filter(Boolean);
-  var allTags=parsed.tags.concat(extraTags).filter(function(t,i,a){return a.indexOf(t)===i;});
-  tasks.unshift({id:uid(),title:parsed.title||raw,tags:allTags,priority:parsed.priority||addPriority,time_bucket:parsed.time_bucket||addTime,date:null,status:'active',created_at:Date.now()});
-  save();render();closeAdd();
+const COST_LABEL = ["Free", "$", "$$", "$$$", "$$$$"];
+const COST_VALUES = [0, 1, 2, 3, 4];
+function costDisplay(costArr) {
+  const arr = Array.isArray(costArr) ? costArr : [costArr ?? 1];
+  if (!arr.length) return "—";
+  return [...arr].sort((a, b) => a - b).map((c) => COST_LABEL[c] ?? "$").join(" / ");
 }
-document.getElementById('submit-add').onclick=submitAdd;
-taskInput.addEventListener('keydown',function(e){if(e.key==='Enter')submitAdd();});
+const LOCATIONS = ["Indoor", "Outdoor", "Either"];
+const LOCATION_FILTERS = ["Indoor", "Outdoor"];
+const SETTINGS_OPT = ["Home", "Away", "Either"];
+const WEATHERS = ["Any", "Good weather", "Rain OK"];
+const PREPS = ["None", "Needs planning"];
+const COUNT_PRESETS = [1, 3, 5, 10];
 
-var editOverlay=document.getElementById('edit-overlay');
-var editSheet=document.getElementById('edit-sheet');
-var editInput=document.getElementById('edit-task-input');
-var editTagInput=document.getElementById('edit-tag-input');
-
-function openEdit(id){
-  var t=tasks.find(function(x){return x.id===id;});if(!t)return;
-  editingId=id;editInput.value=t.title;editTagInput.value=t.tags.join(', ');
-  setEditPriority(t.priority);setEditTime(t.time_bucket);
-  editOverlay.classList.add('open');editSheet.classList.add('open');
-  setTimeout(function(){editInput.focus();},350);
-}
-function closeEdit(){editSheet.classList.remove('open');editOverlay.classList.remove('open');editingId=null;}
-editOverlay.onclick=closeEdit;
-
-document.getElementById('edit-priority-opts').querySelectorAll('.opt-pill').forEach(function(b){b.onclick=function(){setEditPriority(b.dataset.val);};});
-function setEditPriority(v){editPriority=v;document.getElementById('edit-priority-opts').querySelectorAll('.opt-pill').forEach(function(b){b.className='opt-pill '+b.dataset.val+(b.dataset.val===v?' selected':'');});}
-document.getElementById('edit-time-opts').querySelectorAll('.opt-pill').forEach(function(b){b.onclick=function(){setEditTime(b.dataset.val);};});
-function setEditTime(v){editTime=v;document.getElementById('edit-time-opts').querySelectorAll('.opt-pill').forEach(function(b){b.className='opt-pill '+b.dataset.val+(b.dataset.val===v?' selected':'');});}
-
-document.getElementById('submit-edit').onclick=function(){
-  if(!editingId)return;
-  var idx=tasks.findIndex(function(t){return t.id===editingId;});if(idx===-1)return;
-  var newTitle=editInput.value.trim();
-  var extraTags=editTagInput.value.split(',').map(function(t){return t.trim().replace(/^#/,'');}).filter(Boolean);
-  if(newTitle)tasks[idx].title=newTitle;
-  tasks[idx].tags=extraTags;tasks[idx].priority=editPriority;tasks[idx].time_bucket=editTime;
-  save();render();closeEdit();
-};
-document.getElementById('delete-btn').onclick=function(){
-  if(!editingId)return;
-  tasks=tasks.filter(function(t){return t.id!==editingId;});save();render();closeEdit();
-};
-
-document.querySelectorAll('.nav-tab').forEach(function(btn){
-  btn.onclick=function(){
-    currentView=btn.dataset.view;
-    document.querySelectorAll('.nav-tab').forEach(function(b){b.classList.toggle('active',b===btn);});
-    document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('active',v.id==='view-'+currentView);});
-    render();
+// Guarantees every activity has a valid shape, whatever older/partial data it
+// came from (a past schema version, a bad import row, manual storage editing, etc.)
+function normalizeActivity(a, categories) {
+  const catIds = categories.map((c) => c.id);
+  const rawCost = Array.isArray(a?.cost) ? a.cost : a?.cost !== undefined ? [a.cost] : [1];
+  const cleanCost = rawCost.filter((n) => Number.isInteger(n) && n >= 0 && n <= 4);
+  return {
+    id: a?.id || uid(),
+    name: typeof a?.name === "string" && a.name.trim() ? a.name : "Untitled activity",
+    category: catIds.includes(a?.category) ? a.category : (catIds[0] || ""),
+    cost: cleanCost.length ? cleanCost : [1],
+    location: LOCATIONS.includes(a?.location) ? a.location : "Indoor",
+    setting: SETTINGS_OPT.includes(a?.setting) ? a.setting : "Away",
+    weather: WEATHERS.includes(a?.weather) ? a.weather : "Any",
+    prep: PREPS.includes(a?.prep) ? a.prep : "None",
+    notes: typeof a?.notes === "string" ? a.notes : "",
+    done: !!a?.done,
+    doneDate: a?.doneDate || null,
   };
-});
-
-function makeCard(task){
-  var card=document.createElement('div');
-  card.className='task-card'+(task.status==='completed'?' completed':'');
-  var tl=task.time_bucket==='date'&&task.date?task.date:task.time_bucket;
-  var chips=task.tags.slice(0,2).map(function(t){return '<span class="tag-pill">#'+esc(t)+'</span>';}).join('');
-  card.innerHTML='<div class="task-card-inner"><button class="done-btn"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3.5 3.5 5.5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="priority-bar '+task.priority+'"></div><div class="task-body"><div class="task-title">'+esc(task.title)+'</div><div class="task-chips"><span class="time-chip '+task.time_bucket+'">'+tl+'</span>'+chips+'</div></div></div><div class="task-expanded"><div class="expanded-grid"><div class="expanded-cell"><span class="expanded-label">Priority</span><span class="expanded-val">'+task.priority+'</span></div><div class="expanded-cell"><span class="expanded-label">When</span><span class="expanded-val">'+task.time_bucket+'</span></div>'+(task.tags.length?'<div class="expanded-cell" style="grid-column:1/-1"><span class="expanded-label">Tags</span><span class="expanded-val">'+task.tags.map(function(t){return '#'+t;}).join(' ')+'</span></div>':'')+'<div class="expanded-cell" style="grid-column:1/-1"><span class="expanded-label">Added</span><span class="expanded-val">'+new Date(task.created_at).toLocaleDateString()+'</span></div></div><div class="expanded-actions"><button class="action-btn edit-btn">Edit</button><button class="action-btn danger del-btn">Delete</button></div></div>';
-  card.querySelector('.task-card-inner').addEventListener('click',function(e){if(e.target.closest('.done-btn'))return;card.classList.toggle('expanded');});
-  card.querySelector('.done-btn').onclick=function(e){e.stopPropagation();var t=tasks.find(function(x){return x.id===task.id;});if(t){t.status=t.status==='completed'?'active':'completed';save();render();}};
-  card.querySelector('.edit-btn').onclick=function(e){e.stopPropagation();openEdit(task.id);};
-  card.querySelector('.del-btn').onclick=function(e){e.stopPropagation();tasks=tasks.filter(function(x){return x.id!==task.id;});save();render();};
-  return card;
 }
 
-function makeSection(label,dotColor,items,wrap,emptyMsg){
-  wrap.innerHTML='';
-  if(!items.length&&!emptyMsg)return;
-  var sec=document.createElement('div');sec.className='section';
-  sec.innerHTML='<div class="section-header"><div class="section-dot" style="background:'+dotColor+'"></div><span class="section-label">'+label+'</span><span class="section-count">'+items.length+'</span></div><div class="task-list"></div>';
-  var list=sec.querySelector('.task-list');
-  if(!items.length)list.innerHTML='<div class="empty-section">'+emptyMsg+'</div>';
-  else items.forEach(function(t){list.appendChild(makeCard(t));});
-  wrap.appendChild(sec);
-}
+// ---------- Storage ----------
+// Real browser localStorage — persists per device/browser only (no server, no
+// sync between devices). Use the encrypted export/import in the Manage tab
+// to move data between devices or commit an updated copy to your repo.
 
-function makeCompletedSection(items,wrap){
-  wrap.innerHTML='';if(!items.length)return;
-  var tog=document.createElement('div');tog.className='completed-toggle';
-  tog.innerHTML='<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 5.5l3.5 3.5 3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Completed <span style="color:var(--border2)">'+items.length+'</span>';
-  var sec=document.createElement('div');sec.className='completed-section';
-  var list=document.createElement('div');list.className='task-list';list.style.paddingTop='8px';
-  items.forEach(function(t){list.appendChild(makeCard(t));});
-  sec.appendChild(list);
-  tog.onclick=function(){tog.classList.toggle('open');sec.classList.toggle('open');};
-  wrap.appendChild(tog);wrap.appendChild(sec);
-}
-
-function render(){
-  var active=tasks.filter(function(t){return t.status==='active';});
-  var done=tasks.filter(function(t){return t.status==='completed';});
-  if(currentView==='home'){
-    var focusNow=active.filter(function(t){return (t.priority==='critical'||t.priority==='high')&&t.time_bucket==='now';});
-    var comingUp=active.filter(function(t){return t.time_bucket==='soon';});
-    var impLater=active.filter(function(t){return (t.priority==='critical'||t.priority==='high')&&t.time_bucket==='later';});
-    makeSection('Focus Now','var(--now)',focusNow,document.getElementById('home-focus-wrap'),'Nothing urgent right now.');
-    makeSection('Coming Up','var(--soon)',comingUp,document.getElementById('home-coming-wrap'),null);
-    makeSection('Important Later','var(--high)',impLater,document.getElementById('home-later-wrap'),null);
-    makeCompletedSection(done,document.getElementById('home-done-wrap'));
-    var noContent=!focusNow.length&&!comingUp.length&&!impLater.length&&!done.length;
-    var ex=document.getElementById('home-empty');
-    if(noContent&&!ex){var e=document.createElement('div');e.className='empty-state';e.id='home-empty';e.innerHTML='<div class="empty-title">No tasks yet</div><div class="empty-sub">Tap + to capture your first task</div>';document.getElementById('view-home').appendChild(e);}
-    else if(!noContent&&ex)ex.remove();
+async function loadKey(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
   }
-  if(currentView==='priority'){
-    makeSection('Critical','var(--critical)',active.filter(function(t){return t.priority==='critical';}),document.getElementById('pri-critical-wrap'),null);
-    makeSection('High','var(--high)',active.filter(function(t){return t.priority==='high';}),document.getElementById('pri-high-wrap'),null);
-    makeSection('Medium','var(--medium)',active.filter(function(t){return t.priority==='medium';}),document.getElementById('pri-medium-wrap'),null);
-    makeSection('Low','var(--low)',active.filter(function(t){return t.priority==='low';}),document.getElementById('pri-low-wrap'),null);
-    makeCompletedSection(done,document.getElementById('pri-done-wrap'));
+}
+async function saveKey(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error("storage save failed", e);
   }
-  if(currentView==='time'){
-    makeSection('Now','var(--now)',active.filter(function(t){return t.time_bucket==='now';}),document.getElementById('time-now-wrap'),null);
-    makeSection('Soon','var(--soon)',active.filter(function(t){return t.time_bucket==='soon';}),document.getElementById('time-soon-wrap'),null);
-    makeSection('Later','var(--later)',active.filter(function(t){return t.time_bucket==='later';}),document.getElementById('time-later-wrap'),null);
-    makeCompletedSection(done,document.getElementById('time-done-wrap'));
-  }
-  if(currentView==='all')renderAll();
 }
 
-function buildFilterRow(){
-  var row=document.getElementById('filter-row');row.innerHTML='';
-  var filters=[{label:'All',val:'',type:''},{label:'🔴 Critical',val:'critical',type:'p'},{label:'🟠 High',val:'high',type:'p'},{label:'🟡 Medium',val:'medium',type:'p'},{label:'⚪ Low',val:'low',type:'p'},{label:'⚡ Now',val:'now',type:'t'},{label:'🔜 Soon',val:'soon',type:'t'},{label:'📌 Later',val:'later',type:'t'}];
-  filters.forEach(function(f){
-    var btn=document.createElement('button');btn.className='filter-chip';
-    var isActive=f.val===''?(!filterPriority&&!filterTime):(f.type==='p'?filterPriority===f.val:filterTime===f.val);
-    if(isActive)btn.classList.add('active');
-    btn.textContent=f.label;
-    btn.onclick=function(){
-      if(f.val===''){filterPriority='';filterTime='';}
-      else if(f.type==='p'){filterPriority=filterPriority===f.val?'':f.val;filterTime='';}
-      else{filterTime=filterTime===f.val?'':f.val;filterPriority='';}
-      buildFilterRow();renderAll();
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+// ---------- Passcode + encryption ----------
+// Your passcode is never stored — only a SHA-256 hash of it, used to verify you
+// typed the right thing. The passcode itself is kept in memory for the session
+// and used to derive the AES key for encrypted backups, so a backup file you
+// export is genuinely unreadable without the passcode (not just hidden by the UI).
+
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function toB64(bytes) {
+  let s = "";
+  bytes.forEach((b) => (s += String.fromCharCode(b)));
+  return btoa(s);
+}
+function fromB64(str) {
+  return Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
+}
+async function deriveKey(passphrase, saltBytes) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: saltBytes, iterations: 150000, hash: "SHA-256" },
+    base,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+async function encryptBackup(obj, passphrase) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(passphrase, salt);
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return { v: 1, salt: toB64(salt), iv: toB64(iv), ct: toB64(new Uint8Array(ct)) };
+}
+async function decryptBackup(blob, passphrase) {
+  const salt = fromB64(blob.salt);
+  const iv = fromB64(blob.iv);
+  const key = await deriveKey(passphrase, salt);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, fromB64(blob.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// Name/path of the encrypted file committed to the repo, fetched relative to
+// wherever index.html is served from. Rename here if you want a different path.
+const SEED_FILE_NAME = "./data.json";
+
+async function fetchSeedBlob() {
+  try {
+    const res = await fetch(SEED_FILE_NAME, { cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json && json.ct && json.iv && json.salt) return json;
+    return null;
+  } catch {
+    return null; // no file, offline, or not deployed yet — fall back to local/create flow
+  }
+}
+
+// ---------- Import field parsing ----------
+
+const FIELD_ALIASES = {
+  name: ["activity", "name", "title"],
+  category: ["category", "type"],
+  cost: ["cost", "price"],
+  location: ["location", "indoor/outdoor", "indoor"],
+  setting: ["setting", "home/away"],
+  weather: ["weather"],
+  prep: ["prep", "preperation", "preparation"],
+  notes: ["notes", "info", "description"],
+};
+
+function guessColumn(headers, field) {
+  const aliases = FIELD_ALIASES[field] || [];
+  const lower = headers.map((h) => String(h).toLowerCase());
+  for (const alias of aliases) {
+    const idx = lower.findIndex((h) => h === alias);
+    if (idx !== -1) return headers[idx];
+  }
+  for (const alias of aliases) {
+    const idx = lower.findIndex((h) => h.includes(alias));
+    if (idx !== -1) return headers[idx];
+  }
+  return "";
+}
+
+function parseCostMulti(raw) {
+  if (raw === null || raw === undefined || raw === "") return [1];
+  if (typeof raw === "number") return [Math.min(4, Math.max(0, Math.round(raw)))];
+  const s = String(raw).trim();
+  if (!s) return [1];
+  if (/free/i.test(s) && !/\$/.test(s) && !/\d/.test(s)) return [0];
+
+  const tiers = new Set();
+  if (/free/i.test(s)) tiers.add(0);
+  // one or more runs of $ signs, e.g. "$-$$$", "$, $$$", "$$"
+  const dollarRuns = s.match(/\${1,4}/g);
+  if (dollarRuns) dollarRuns.forEach((run) => tiers.add(Math.min(4, run.length)));
+  if (!dollarRuns && !tiers.size) {
+    // fall back to plain numbers, e.g. "1-3", "2", "1,2"
+    const nums = s.match(/\d+/g);
+    if (nums) nums.forEach((n) => tiers.add(Math.min(4, Math.max(0, parseInt(n, 10)))));
+  }
+  if (!tiers.size) return [1];
+  return [...tiers].sort((a, b) => a - b);
+}
+function parseLocation(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s.includes("out")) return "Outdoor";
+  if (s.includes("either") || s.includes("any")) return "Either";
+  return "Indoor";
+}
+function parseSetting(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s.includes("home")) return "Home";
+  if (s.includes("either") || s.includes("any")) return "Either";
+  return "Away";
+}
+function parseWeather(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s.includes("rain")) return "Rain OK";
+  if (s.includes("good") || s.includes("sun") || s.includes("dry")) return "Good weather";
+  return "Any";
+}
+function parsePrep(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (!s || s.includes("none")) return "None";
+  return "Needs planning";
+}
+
+// ---------- Theme ----------
+
+function getTheme(mode, accent) {
+  if (mode === "dark") {
+    return {
+      mode, accent,
+      bg: "#000000", bgSubtle: "#1C1C1E", surface: "#1C1C1E", surfaceRaised: "#242426",
+      border: "#38383A", text: "#F5F5F7", textSecondary: "#98989D", textTertiary: "#68686D",
+      shadow: "0 1px 2px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.35)",
+      overlay: "rgba(0,0,0,0.6)",
     };
-    row.appendChild(btn);
-  });
+  }
+  return {
+    mode, accent,
+    bg: "#FFFFFF", bgSubtle: "#F5F5F7", surface: "#FFFFFF", surfaceRaised: "#FFFFFF",
+    border: "#E5E5EA", text: "#1D1D1F", textSecondary: "#6E6E73", textTertiary: "#AEAEB2",
+    shadow: "0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08)",
+    overlay: "rgba(0,0,0,0.35)",
+  };
 }
 
-function renderAll(){
-  buildFilterRow();
-  var q=(document.getElementById('search-input').value||'').toLowerCase();
-  var filtered=tasks.filter(function(t){
-    if(q&&!t.title.toLowerCase().includes(q)&&!t.tags.some(function(tg){return tg.includes(q);}))return false;
-    if(filterPriority&&t.priority!==filterPriority)return false;
-    if(filterTime&&t.time_bucket!==filterTime)return false;
+// ---------- Component ----------
+
+function DateIdeaPicker() {
+  const [loaded, setLoaded] = useState(false);
+  const [activities, setActivities] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [theme, setTheme] = useState("light");
+  const [accent, setAccent] = useState(ACCENT_PRESETS[0].hex);
+  const [page, setPage] = useState("picker"); // picker | manage | stats
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
+
+  // passcode lock
+  const [passHash, setPassHash] = useState(null); // null until we know if a passcode exists
+  const [unlocked, setUnlocked] = useState(false);
+  const [lockMode, setLockMode] = useState("create"); // create | hash | seed
+  const [pendingSeedBlob, setPendingSeedBlob] = useState(null);
+  const [sessionPass, setSessionPass] = useState("");
+  const [passInput, setPassInput] = useState("");
+  const [passConfirm, setPassConfirm] = useState("");
+  const [lockError, setLockError] = useState("");
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupMsg, setBackupMsg] = useState("");
+  const backupFileRef = useRef(null);
+
+
+  // filters
+  const [catFilter, setCatFilter] = useState([]);
+  const [costFilter, setCostFilter] = useState([]);
+  const [locFilter, setLocFilter] = useState(null);
+  const [advOpen, setAdvOpen] = useState(false);
+  const [weatherFilter, setWeatherFilter] = useState(null);
+  const [settingFilter, setSettingFilter] = useState(null);
+  const [prepFilter, setPrepFilter] = useState(null);
+  const [includeDone, setIncludeDone] = useState(false);
+
+  // count controls (shared state across the three UI variants)
+  const [drawCount, setDrawCount] = useState(1);
+
+  // results
+  const [shuffling, setShuffling] = useState(false);
+  const [results, setResults] = useState(null); // array
+  const [flip, setFlip] = useState(false);
+  const [emptyNotice, setEmptyNotice] = useState(false);
+
+  // manage page
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [showCatManager, setShowCatManager] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatColor, setNewCatColor] = useState(CATEGORY_PALETTE[0]);
+
+  // import
+  const [importOpen, setImportOpen] = useState(false);
+  const [importStep, setImportStep] = useState("upload"); // upload | map
+  const [importRows, setImportRows] = useState([]);
+  const [importHeaders, setImportHeaders] = useState([]);
+  const [fieldMap, setFieldMap] = useState({});
+  const [skipDup, setSkipDup] = useState(true);
+  const [importError, setImportError] = useState("");
+  const fileInputRef = useRef(null);
+
+  const blankForm = () => ({
+    name: "", category: categories[0]?.id || "", cost: [1], location: "Indoor",
+    setting: "Away", weather: "Any", prep: "None", notes: "",
+  });
+  const [form, setForm] = useState(blankForm());
+
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+    (async () => {
+      const acts = await loadKey("dc-date:activities", null);
+      const cats = await loadKey("dc-date:categories", null);
+      const settings = await loadKey("dc-date:settings", null);
+      const storedHash = await loadKey("dc-date:passHash", null);
+
+      if (storedHash) {
+        // this device already has a passcode set locally — ask for it
+        setPassHash(storedHash);
+        setLockMode("hash");
+      } else {
+        // no local passcode yet — check if the repo has a committed encrypted backup
+        const seedBlob = await fetchSeedBlob();
+        if (seedBlob) {
+          setPendingSeedBlob(seedBlob);
+          setLockMode("seed");
+        } else {
+          // first-ever run on this device, nothing to unlock yet — show the
+          // normal "create a passcode" form
+          setLockMode("create");
+        }
+      }
+      const finalCats = cats && cats.length ? cats : DEFAULT_CATEGORIES;
+      const rawActs = acts && acts.length ? acts : DEFAULT_ACTIVITIES;
+      // repair any activity saved under an older data shape (cost as a plain
+      // number, missing fields, an invalid enum value, a category id that no
+      // longer exists, etc.) so old testing data can never crash the app
+      let migrated = false;
+      const finalActs = rawActs.map((a) => {
+        const fixed = normalizeActivity(a, finalCats);
+        if (JSON.stringify(fixed) !== JSON.stringify(a)) migrated = true;
+        return fixed;
+      });
+      setCategories(finalCats);
+      setActivities(finalActs);
+      if (settings) {
+        setTheme(settings.theme || "light");
+        setAccent(settings.accent || ACCENT_PRESETS[0].hex);
+      }
+      if (!cats) await saveKey("dc-date:categories", finalCats);
+      if (!acts || migrated) await saveKey("dc-date:activities", finalActs);
+      setLoaded(true);
+    })();
+  }, []);
+
+  const persistActivities = async (next) => {
+    setActivities(next);
+    await saveKey("dc-date:activities", next);
+  };
+  const persistCategories = async (next) => {
+    setCategories(next);
+    await saveKey("dc-date:categories", next);
+  };
+  const persistSettings = async (nextTheme, nextAccent) => {
+    await saveKey("dc-date:settings", { theme: nextTheme, accent: nextAccent });
+  };
+
+  const T = useMemo(() => getTheme(theme, accent), [theme, accent]);
+  const S = useMemo(() => mkStyles(T), [T]);
+
+  const catById = (id) => categories.find((c) => c.id === id);
+
+  function matches(a) {
+    if (!includeDone && a.done) return false;
+    if (catFilter.length && !catFilter.includes(a.category)) return false;
+    if (costFilter.length && !(Array.isArray(a.cost) ? a.cost : [a.cost]).some((c) => costFilter.includes(c))) return false;
+    if (locFilter && a.location !== locFilter && a.location !== "Either") return false;
+    if (weatherFilter && a.weather !== weatherFilter && a.weather !== "Any") return false;
+    if (settingFilter && a.setting !== settingFilter && a.setting !== "Either") return false;
+    if (prepFilter && a.prep !== prepFilter) return false;
     return true;
-  });
-  var list=document.getElementById('all-list');list.innerHTML='';
-  if(!filtered.length){list.innerHTML='<div class="empty-state"><div class="empty-title">No tasks found</div><div class="empty-sub">Try a different filter</div></div>';return;}
-  var tl=document.createElement('div');tl.className='task-list';
-  filtered.forEach(function(t){tl.appendChild(makeCard(t));});
-  list.appendChild(tl);
+  }
+
+  function toggleMulti(arr, setArr, val) {
+    setArr(arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]);
+  }
+  function toggleSingle(cur, setCur, val) {
+    setCur(cur === val ? null : val);
+  }
+
+  function setCount(n) {
+    if (n === "all") {
+      setDrawCount("all");
+      return;
+    }
+    const clamped = Math.max(1, Math.min(50, n || 1));
+    setDrawCount(clamped);
+  }
+
+  function draw() {
+    const pool = [...activities.filter(matches)];
+    if (!pool.length) {
+      setEmptyNotice(true);
+      setResults(null);
+      return;
+    }
+    setEmptyNotice(false);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const limit = drawCount === "all" ? pool.length : drawCount;
+    const picks = pool.slice(0, limit);
+
+    setShuffling(true);
+    setFlip(false);
+    setResults(null);
+    setTimeout(() => {
+      setResults(picks);
+      setShuffling(false);
+      // branch on the actual number of picks, not the requested count —
+      // a request for several that resolves to one match should still flip-reveal
+      if (picks.length === 1) setTimeout(() => setFlip(true), 30);
+    }, 500);
+  }
+
+  function toggleDone(id) {
+    const next = activities.map((a) =>
+      a.id === id ? { ...a, done: !a.done, doneDate: !a.done ? new Date().toISOString().slice(0, 10) : null } : a
+    );
+    persistActivities(next);
+  }
+  function deleteActivity(id) {
+    persistActivities(activities.filter((a) => a.id !== id));
+    if (results) setResults(results.filter((a) => a.id !== id));
+  }
+  function openEdit(a) {
+    const fixed = normalizeActivity(a, categories);
+    setEditingId(fixed.id);
+    setForm({ name: fixed.name, category: fixed.category, cost: fixed.cost, location: fixed.location, setting: fixed.setting, weather: fixed.weather, prep: fixed.prep, notes: fixed.notes });
+    setFormError("");
+    setShowForm(true);
+  }
+  function openAdd() {
+    setEditingId(null);
+    setForm(blankForm());
+    setFormError("");
+    setShowForm(true);
+  }
+  function submitForm(e) {
+    e.preventDefault();
+    setFormError("");
+    if (!form.name.trim() || !form.category) {
+      setFormError("Give it a name and a category before saving.");
+      return;
+    }
+    try {
+      if (editingId) {
+        const next = activities.map((a) => (a.id === editingId ? normalizeActivity({ ...a, ...form }, categories) : a));
+        persistActivities(next);
+      } else {
+        const next = [...activities, normalizeActivity({ id: uid(), ...form, done: false, doneDate: null }, categories)];
+        persistActivities(next);
+      }
+      setShowForm(false);
+    } catch (err) {
+      console.error(err);
+      setFormError(`Couldn't save: ${err.message || "something went wrong"}. This is a bug — tell me exactly what you filled in and I'll fix it.`);
+    }
+  }
+  function addCategory() {
+    if (!newCatName.trim()) return;
+    persistCategories([...categories, { id: uid(), name: newCatName.trim(), color: newCatColor }]);
+    setNewCatName("");
+  }
+  function removeCategory(id) {
+    if (activities.some((a) => a.category === id)) return;
+    persistCategories(categories.filter((c) => c.id !== id));
+  }
+
+  // ---------- Import ----------
+
+  function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError("");
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        if (!rows.length) {
+          setImportError("That sheet looks empty.");
+          return;
+        }
+        const headers = Object.keys(rows[0]);
+        const guessed = {};
+        Object.keys(FIELD_ALIASES).forEach((f) => (guessed[f] = guessColumn(headers, f)));
+        setImportHeaders(headers);
+        setImportRows(rows);
+        setFieldMap(guessed);
+        setImportStep("map");
+      } catch (err) {
+        setImportError("Couldn't read that file. Try an .xlsx or .csv export.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function transformRow(row) {
+    const nameVal = fieldMap.name ? row[fieldMap.name] : "";
+    const catRaw = fieldMap.category ? row[fieldMap.category] : "";
+    return {
+      name: String(nameVal || "").trim(),
+      categoryRaw: String(catRaw || "").trim(),
+      cost: parseCostMulti(fieldMap.cost ? row[fieldMap.cost] : ""),
+      location: parseLocation(fieldMap.location ? row[fieldMap.location] : ""),
+      setting: parseSetting(fieldMap.setting ? row[fieldMap.setting] : ""),
+      weather: parseWeather(fieldMap.weather ? row[fieldMap.weather] : ""),
+      prep: parsePrep(fieldMap.prep ? row[fieldMap.prep] : ""),
+      notes: fieldMap.notes ? String(row[fieldMap.notes] || "") : "",
+    };
+  }
+
+  function confirmImport() {
+    let cats = [...categories];
+    let colorCursor = cats.length;
+    const existingNames = new Set(activities.map((a) => a.name.trim().toLowerCase()));
+    const newActs = [];
+
+    importRows.forEach((row) => {
+      const t = transformRow(row);
+      if (!t.name) return;
+      if (skipDup && existingNames.has(t.name.toLowerCase())) return;
+
+      let cat = t.categoryRaw
+        ? cats.find((c) => c.name.toLowerCase() === t.categoryRaw.toLowerCase())
+        : null;
+      if (!cat && t.categoryRaw) {
+        cat = { id: uid(), name: t.categoryRaw, color: CATEGORY_PALETTE[colorCursor % CATEGORY_PALETTE.length] };
+        colorCursor++;
+        cats.push(cat);
+      }
+      if (!cat) cat = cats[0];
+
+      newActs.push({
+        id: uid(), name: t.name, category: cat.id, cost: t.cost, location: t.location,
+        setting: t.setting, weather: t.weather, prep: t.prep, notes: t.notes,
+        done: false, doneDate: null,
+      });
+      existingNames.add(t.name.toLowerCase());
+    });
+
+    persistCategories(cats);
+    persistActivities([...activities, ...newActs]);
+    setImportOpen(false);
+    setImportStep("upload");
+    setImportRows([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  const doneCount = activities.filter((a) => a.done).length;
+  const filteredList = activities.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
+
+  function changeTheme(m) {
+    setTheme(m);
+    persistSettings(m, accent);
+  }
+  function changeAccent(hex) {
+    setAccent(hex);
+    persistSettings(theme, hex);
+  }
+
+  // ---------- Passcode ----------
+
+  async function createPasscode(e) {
+    e.preventDefault();
+    setLockError("");
+    if (passInput.length < 8) {
+      setLockError("Use at least 8 characters — this doubles as your backup encryption key.");
+      return;
+    }
+    if (passInput !== passConfirm) {
+      setLockError("Those don't match.");
+      return;
+    }
+    try {
+      const hash = await sha256Hex(passInput);
+      await saveKey("dc-date:passHash", hash);
+      setPassHash(hash);
+      setSessionPass(passInput);
+      setUnlocked(true);
+    } catch (err) {
+      setLockError("Something went wrong creating that passcode — try again.");
+      console.error(err);
+    }
+  }
+
+  async function tryUnlock(e) {
+    e.preventDefault();
+    setLockError("");
+    try {
+      const hash = await sha256Hex(passInput);
+      if (hash === passHash) {
+        setSessionPass(passInput);
+        setUnlocked(true);
+      } else {
+        setLockError("Incorrect passcode.");
+      }
+    } catch (err) {
+      setLockError("Something went wrong unlocking — try again.");
+      console.error(err);
+    }
+  }
+
+  async function unlockFromSeed(e) {
+    e.preventDefault();
+    setLockError("");
+    try {
+      const data = await decryptBackup(pendingSeedBlob, passInput);
+      if (!data.activities || !data.categories) throw new Error("bad shape");
+      const hash = await sha256Hex(passInput);
+      setActivities(data.activities);
+      setCategories(data.categories);
+      await saveKey("dc-date:activities", data.activities);
+      await saveKey("dc-date:categories", data.categories);
+      await saveKey("dc-date:passHash", hash);
+      setPassHash(hash);
+      setSessionPass(passInput);
+      setUnlocked(true);
+    } catch (err) {
+      setLockError("Couldn't unlock — wrong passcode, or the file wasn't a backup from this app.");
+    }
+  }
+
+  async function resetPasscode() {
+    await saveKey("dc-date:passHash", null);
+    setPassHash(null);
+    setUnlocked(false);
+    setLockMode("create");
+    setPendingSeedBlob(null);
+    setPassInput("");
+    setPassConfirm("");
+    setSessionPass("");
+  }
+
+  async function resetAllData() {
+    await saveKey("dc-date:activities", DEFAULT_ACTIVITIES);
+    await saveKey("dc-date:categories", DEFAULT_CATEGORIES);
+    await saveKey("dc-date:passHash", null);
+    await saveKey("dc-date:settings", null);
+    setActivities(DEFAULT_ACTIVITIES);
+    setCategories(DEFAULT_CATEGORIES);
+    setTheme("light");
+    setAccent(ACCENT_PRESETS[0].hex);
+    setPassHash(null);
+    setUnlocked(false);
+    setLockMode("create");
+    setPendingSeedBlob(null);
+    setPassInput("");
+    setPassConfirm("");
+    setSessionPass("");
+    setSettingsOpen(false);
+  }
+
+  // ---------- Encrypted backup (export/import to sync via GitHub) ----------
+
+  async function exportBackup() {
+    setBackupBusy(true);
+    setBackupMsg("");
+    try {
+      const blob = await encryptBackup({ activities, categories }, sessionPass);
+      const text = JSON.stringify(blob, null, 2);
+      const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dc-dates-backup.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      setBackupMsg("Downloaded — commit this file to your repo to sync it.");
+    } catch (err) {
+      setBackupMsg("Export failed — try again.");
+    }
+    setBackupBusy(false);
+  }
+
+  function handleBackupFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBackupBusy(true);
+    setBackupMsg("");
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const blob = JSON.parse(evt.target.result);
+        const data = await decryptBackup(blob, sessionPass);
+        if (!data.activities || !data.categories) throw new Error("bad shape");
+        setActivities(data.activities);
+        setCategories(data.categories);
+        await saveKey("dc-date:activities", data.activities);
+        await saveKey("dc-date:categories", data.categories);
+        setBackupMsg(`Loaded ${data.activities.length} activities from backup.`);
+      } catch (err) {
+        setBackupMsg("Couldn't decrypt that file — wrong passcode, or it's not a backup from this app.");
+      }
+      setBackupBusy(false);
+      if (backupFileRef.current) backupFileRef.current.value = "";
+    };
+    reader.readAsText(file);
+  }
+
+  if (!loaded) {
+    return (
+      <div style={{ ...S.page, display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
+        <div style={{ color: S.T.textSecondary, fontSize: 14 }}>Loading…</div>
+      </div>
+    );
+  }
+
+  if (!unlocked) {
+    return (
+      <LockScreen
+        S={S} T={T}
+        mode={lockMode}
+        passInput={passInput} setPassInput={setPassInput}
+        passConfirm={passConfirm} setPassConfirm={setPassConfirm}
+        lockError={lockError}
+        onSubmit={lockMode === "create" ? createPasscode : lockMode === "seed" ? unlockFromSeed : tryUnlock}
+      />
+    );
+  }
+
+  return (
+    <div style={S.page}>
+      <style>{`
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes blink { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+        .dc-in { animation: fadeUp .3s ease both; }
+        .dc-blink { animation: blink 1.1s infinite ease-in-out; }
+        .dc-flip-outer { perspective: 1400px; }
+        .dc-flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.4,.15,.2,1); }
+        .dc-flip-inner.flipped { transform: rotateY(180deg); }
+        .dc-flip-face { position: absolute; inset: 0; backface-visibility: hidden; }
+        .dc-flip-back { transform: rotateY(180deg); }
+        .dc-chip { cursor: pointer; transition: filter .12s ease, transform .12s ease; }
+        .dc-chip:active { transform: scale(0.97); }
+        .dc-btn { cursor: pointer; transition: opacity .12s ease, transform .12s ease; }
+        .dc-btn:hover { opacity: 0.88; }
+        .dc-btn:active { transform: scale(0.98); }
+        .dc-row:hover { background: ${T.bgSubtle}; }
+        .dc-tab { cursor: pointer; }
+        input, select, textarea, button { font-family: inherit; }
+        ::placeholder { color: ${T.textTertiary}; }
+        table { border-collapse: collapse; width: 100%; }
+      `}</style>
+
+      {/* Top bar */}
+      <div style={S.topbar}>
+        <div style={S.tabs}>
+          {[["picker", "Picker"], ["manage", "Manage"], ["stats", "Stats & History"]].map(([id, label]) => (
+            <div key={id} className="dc-tab" onClick={() => setPage(id)} style={{ ...S.tab, ...(page === id ? S.tabActive : {}) }}>
+              {label}
+            </div>
+          ))}
+        </div>
+        <div style={{ position: "relative" }}>
+          <button className="dc-btn" style={S.gearBtn} onClick={() => setSettingsOpen(!settingsOpen)} aria-label="Settings">⚙</button>
+          {settingsOpen && (
+            <div style={S.settingsPop} className="dc-in">
+              <div style={S.filterLabel}>Appearance</div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                {["light", "dark"].map((m) => (
+                  <div key={m} className="dc-chip" onClick={() => changeTheme(m)}
+                    style={{ ...S.segItem, background: theme === m ? T.text : "transparent", color: theme === m ? T.bg : T.text, borderColor: T.border, flex: 1, textAlign: "center" }}>
+                    {m === "light" ? "Light" : "Dark"}
+                  </div>
+                ))}
+              </div>
+              <div style={S.filterLabel}>Accent color</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                {ACCENT_PRESETS.map((c) => (
+                  <span key={c.hex} onClick={() => changeAccent(c.hex)} title={c.name}
+                    style={{ width: 24, height: 24, borderRadius: "50%", background: c.hex, cursor: "pointer", display: "inline-block", border: accent === c.hex ? `2px solid ${T.text}` : "2px solid transparent", boxShadow: accent === c.hex ? `0 0 0 2px ${T.bg}` : "none" }} />
+                ))}
+              </div>
+              <div style={{ borderTop: `1px dashed ${T.border}`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                <button className="dc-btn" style={{ ...S.linkBtn, fontSize: 12, color: "#FF3B30" }} onClick={resetPasscode}>
+                  Reset passcode
+                </button>
+                <button className="dc-btn" style={{ ...S.linkBtn, fontSize: 12, color: "#FF3B30" }}
+                  onClick={() => {
+                    if (confirmResetAll) resetAllData();
+                    else { setConfirmResetAll(true); setTimeout(() => setConfirmResetAll(false), 4000); }
+                  }}>
+                  {confirmResetAll ? "Click again to erase everything" : "Reset all data"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {page === "picker" && (
+        <PickerPage
+          T={T} S={S}
+          categories={categories} catFilter={catFilter} setCatFilter={setCatFilter}
+          costFilter={costFilter} setCostFilter={setCostFilter}
+          locFilter={locFilter} setLocFilter={setLocFilter}
+          advOpen={advOpen} setAdvOpen={setAdvOpen}
+          weatherFilter={weatherFilter} setWeatherFilter={setWeatherFilter}
+          settingFilter={settingFilter} setSettingFilter={setSettingFilter}
+          prepFilter={prepFilter} setPrepFilter={setPrepFilter}
+          includeDone={includeDone} setIncludeDone={setIncludeDone}
+          toggleMulti={toggleMulti} toggleSingle={toggleSingle}
+          drawCount={drawCount} setCount={setCount}
+          draw={draw} shuffling={shuffling} results={results} flip={flip}
+          emptyNotice={emptyNotice} catById={catById} toggleDone={toggleDone}
+        />
+      )}
+
+      {page === "manage" && (
+        <ManagePage
+          T={T} S={S}
+          activities={filteredList} allCount={activities.length}
+          search={search} setSearch={setSearch}
+          categories={categories} catById={catById}
+          openAdd={openAdd} openEdit={openEdit} deleteActivity={deleteActivity} toggleDone={toggleDone}
+          showCatManager={showCatManager} setShowCatManager={setShowCatManager}
+          newCatName={newCatName} setNewCatName={setNewCatName}
+          newCatColor={newCatColor} setNewCatColor={setNewCatColor}
+          addCategory={addCategory} removeCategory={removeCategory}
+          openImport={() => { setImportOpen(true); setImportStep("upload"); setImportError(""); }}
+          exportBackup={exportBackup} handleBackupFile={handleBackupFile} backupFileRef={backupFileRef}
+          backupBusy={backupBusy} backupMsg={backupMsg}
+        />
+      )}
+
+      {page === "stats" && (
+        <StatsPage T={T} S={S} activities={activities} categories={categories} catById={catById} toggleDone={toggleDone} doneCount={doneCount} />
+      )}
+
+      {/* Add/Edit modal */}
+      {showForm && (
+        <div style={S.overlay} onClick={() => setShowForm(false)}>
+          <form style={S.formBox} onClick={(e) => e.stopPropagation()} onSubmit={submitForm}>
+            <div style={S.formTitle}>{editingId ? "Edit activity" : "Add activity"}</div>
+            <label style={S.formLabel}>Name</label>
+            <input required style={S.input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sunset at Gravelly Point" />
+            <label style={S.formLabel}>Category</label>
+            <select style={S.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <div style={{ marginBottom: 4 }}>
+              <label style={S.formLabel}>Cost (select all that apply)</label>
+              <div style={{ ...S.chipRow, marginBottom: 10 }}>
+                {COST_VALUES.map((n) => {
+                  const active = form.cost.includes(n);
+                  return (
+                    <div key={n} className="dc-chip"
+                      onClick={() => {
+                        const next = active ? form.cost.filter((c) => c !== n) : [...form.cost, n];
+                        setForm({ ...form, cost: next.length ? next : [n] });
+                      }}
+                      style={{ ...S.chipSm, borderColor: T.accent, background: active ? T.accent : "transparent", color: active ? "#FFFFFF" : T.text }}>
+                      {COST_LABEL[n]}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={S.formLabel}>Location</label>
+                <select style={S.input} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}>
+                  {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={S.formLabel}>Home / away</label>
+                <select style={S.input} value={form.setting} onChange={(e) => setForm({ ...form, setting: e.target.value })}>
+                  {SETTINGS_OPT.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={S.formLabel}>Weather</label>
+                <select style={S.input} value={form.weather} onChange={(e) => setForm({ ...form, weather: e.target.value })}>
+                  {WEATHERS.map((w) => <option key={w} value={w}>{w}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={S.formLabel}>Prep</label>
+                <select style={S.input} value={form.prep} onChange={(e) => setForm({ ...form, prep: e.target.value })}>
+                  {PREPS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+            <label style={S.formLabel}>Notes (optional)</label>
+            <textarea style={{ ...S.input, minHeight: 60, resize: "vertical" }} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            {formError && <div style={{ color: "#FF3B30", fontSize: 12.5, marginTop: 4, marginBottom: 6, lineHeight: 1.4 }}>{formError}</div>}
+            <div style={{ display: "flex", gap: 10, marginTop: 14, justifyContent: "flex-end" }}>
+              <button type="button" className="dc-btn" style={S.btnGhost} onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="submit" className="dc-btn" style={S.btnPrimary}>{editingId ? "Save changes" : "Add activity"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Import modal */}
+      {importOpen && (
+        <div style={S.overlay} onClick={() => setImportOpen(false)}>
+          <div style={{ ...S.formBox, maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+            <div style={S.formTitle}>Import from Excel</div>
+            {importStep === "upload" && (
+              <>
+                <div style={{ color: T.textSecondary, fontSize: 13.5, marginBottom: 16, lineHeight: 1.5 }}>
+                  Upload an .xlsx, .xls, or .csv file. The first row should be column headers — I'll try to match them automatically, and you can fix anything that's off before importing.
+                </div>
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileSelect} style={{ marginBottom: 10 }} />
+                {importError && <div style={{ color: "#FF3B30", fontSize: 13 }}>{importError}</div>}
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                  <button className="dc-btn" style={S.btnGhost} onClick={() => setImportOpen(false)}>Cancel</button>
+                </div>
+              </>
+            )}
+            {importStep === "map" && (
+              <>
+                <div style={{ color: T.textSecondary, fontSize: 13, marginBottom: 12 }}>
+                  {importRows.length} rows found. Match your columns to each field (unmatched fields will use a sensible default).
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                  {Object.keys(FIELD_ALIASES).map((f) => (
+                    <div key={f}>
+                      <label style={S.formLabel}>{f === "name" ? "Activity name" : f.charAt(0).toUpperCase() + f.slice(1)}</label>
+                      <select style={S.input} value={fieldMap[f] || ""} onChange={(e) => setFieldMap({ ...fieldMap, [f]: e.target.value })}>
+                        <option value="">— none / skip —</option>
+                        {importHeaders.map((h) => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: T.text, marginBottom: 12 }}>
+                  <input type="checkbox" checked={skipDup} onChange={(e) => setSkipDup(e.target.checked)} />
+                  Skip rows whose name matches an activity you already have
+                </label>
+                <div style={{ ...S.tableWrap, maxHeight: 160, marginBottom: 14 }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={S.th}>Name</th><th style={S.th}>Category</th><th style={S.th}>Cost</th><th style={S.th}>Location</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importRows.slice(0, 4).map((row, i) => {
+                        const t = transformRow(row);
+                        return (
+                          <tr key={i}>
+                            <td style={S.td}>{t.name || "—"}</td>
+                            <td style={S.td}>{t.categoryRaw || "—"}</td>
+                            <td style={S.td}>{costDisplay(t.cost)}</td>
+                            <td style={S.td}>{t.location}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                  <button className="dc-btn" style={S.btnGhost} onClick={() => setImportOpen(false)}>Cancel</button>
+                  <button className="dc-btn" style={S.btnPrimary} onClick={confirmImport}>Import {importRows.length} rows</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-document.getElementById('search-input').addEventListener('input',function(){if(currentView==='all')renderAll();});
-render();
+// ---------- Picker Page ----------
+
+// ---------- Lock Screen ----------
+
+function LockScreen({ S, T, mode, passInput, setPassInput, passConfirm, setPassConfirm, lockError, onSubmit }) {
+  const creating = mode === "create";
+  const isSeed = mode === "seed";
+  return (
+    <div style={{ ...S.page, minHeight: 420, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <form onSubmit={onSubmit} style={{ ...S.formBox, maxWidth: 340, textAlign: "center" }}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>🔒</div>
+        <div style={S.formTitle}>{creating ? "Set a passcode" : "Enter your passcode"}</div>
+        <div style={{ color: T.textSecondary, fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>
+          {creating
+            ? "This unlocks the app and encrypts any backups you export — use at least 8 characters."
+            : isSeed
+            ? "Found a saved backup — enter the passcode it was encrypted with to unlock it."
+            : "Unlock to see your activities."}
+        </div>
+        <input
+          type="password" autoFocus style={S.input}
+          placeholder={creating ? "Create a passcode" : "Passcode"}
+          value={passInput} onChange={(e) => setPassInput(e.target.value)}
+        />
+        {creating && (
+          <input
+            type="password" style={S.input} placeholder="Confirm passcode"
+            value={passConfirm} onChange={(e) => setPassConfirm(e.target.value)}
+          />
+        )}
+        {lockError && <div style={{ color: "#FF3B30", fontSize: 12.5, marginBottom: 8 }}>{lockError}</div>}
+        <button type="submit" className="dc-btn" style={{ ...S.btnPrimary, width: "100%", padding: "11px 0", marginTop: 4 }}>
+          {creating ? "Create & unlock" : "Unlock"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function PickerPage(props) {
+  const {
+    T, S, categories, catFilter, setCatFilter, costFilter, setCostFilter, locFilter, setLocFilter,
+    advOpen, setAdvOpen, weatherFilter, setWeatherFilter, settingFilter, setSettingFilter,
+    prepFilter, setPrepFilter, includeDone, setIncludeDone, toggleMulti, toggleSingle,
+    drawCount, setCount,
+    draw, shuffling, results, flip, emptyNotice, catById, toggleDone,
+  } = props;
+
+  return (
+    <div style={S.pageInner}>
+      <div style={S.h1}>Pick something to do</div>
+      <div style={S.subtext}>Filter by what you're in the mood for, then let it choose.</div>
+
+      <div style={S.panel}>
+        <div style={S.filterLabel}>Category</div>
+        <div style={S.chipRow}>
+          {categories.map((c) => {
+            const active = catFilter.includes(c.id);
+            return (
+              <div key={c.id} className="dc-chip" onClick={() => toggleMulti(catFilter, setCatFilter, c.id)}
+                style={{ ...S.chip, borderColor: c.color, background: active ? c.color : "transparent", color: active ? "#FFFFFF" : T.text }}>
+                <span style={{ ...S.dotSm, background: active ? "#FFFFFF" : c.color }} />
+                {c.name}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={S.filterRow2}>
+          <div>
+            <div style={S.filterLabel}>Cost</div>
+            <div style={S.chipRow}>
+              {COST_VALUES.map((n) => {
+                const active = costFilter.includes(n);
+                return (
+                  <div key={n} className="dc-chip" onClick={() => toggleMulti(costFilter, setCostFilter, n)}
+                    style={{ ...S.chip, borderColor: T.accent, background: active ? T.accent : "transparent", color: active ? "#FFFFFF" : T.text }}>
+                    {COST_LABEL[n]}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <div style={S.filterLabel}>Where</div>
+            <div style={S.chipRow}>
+              {LOCATION_FILTERS.map((l) => {
+                const active = locFilter === l;
+                return (
+                  <div key={l} className="dc-chip" onClick={() => toggleSingle(locFilter, setLocFilter, l)}
+                    style={{ ...S.chip, borderColor: T.accent, background: active ? T.accent : "transparent", color: active ? "#FFFFFF" : T.text }}>
+                    {l}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <button style={S.advToggle} onClick={() => setAdvOpen(!advOpen)}>
+          {advOpen ? "Hide" : "Show"} advanced filters
+        </button>
+
+        {advOpen && (
+          <div style={S.advBox} className="dc-in">
+            <div>
+              <div style={S.filterLabel}>Weather</div>
+              <div style={S.chipRow}>
+                {WEATHERS.map((w) => {
+                  const active = weatherFilter === w;
+                  return (
+                    <div key={w} className="dc-chip" onClick={() => toggleSingle(weatherFilter, setWeatherFilter, w)}
+                      style={{ ...S.chipSm, borderColor: T.textSecondary, background: active ? T.text : "transparent", color: active ? T.bg : T.text }}>
+                      {w}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <div style={S.filterLabel}>Home or away</div>
+              <div style={S.chipRow}>
+                {SETTINGS_OPT.map((s) => {
+                  const active = settingFilter === s;
+                  return (
+                    <div key={s} className="dc-chip" onClick={() => toggleSingle(settingFilter, setSettingFilter, s)}
+                      style={{ ...S.chipSm, borderColor: T.textSecondary, background: active ? T.text : "transparent", color: active ? T.bg : T.text }}>
+                      {s}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <div style={S.filterLabel}>Prep needed</div>
+              <div style={S.chipRow}>
+                {PREPS.map((p) => {
+                  const active = prepFilter === p;
+                  return (
+                    <div key={p} className="dc-chip" onClick={() => toggleSingle(prepFilter, setPrepFilter, p)}
+                      style={{ ...S.chipSm, borderColor: T.textSecondary, background: active ? T.text : "transparent", color: active ? T.bg : T.text }}>
+                      {p}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, color: T.text, fontSize: 13, marginTop: 4 }}>
+              <input type="checkbox" checked={includeDone} onChange={(e) => setIncludeDone(e.target.checked)} />
+              Include activities already marked done
+            </label>
+          </div>
+        )}
+      </div>
+
+      {/* Count controls — three variants, all wired to the same value */}
+      <div style={S.panel}>
+        <div style={S.filterLabel}>How many activities?</div>
+
+        <div style={S.chipRow}>
+          {COUNT_PRESETS.map((n) => (
+            <div key={n} className="dc-chip" onClick={() => setCount(n)}
+              style={{ ...S.segItem, borderColor: T.accent, background: drawCount === n ? T.accent : "transparent", color: drawCount === n ? "#FFFFFF" : T.text }}>
+              {n}
+            </div>
+          ))}
+          <div className="dc-chip" onClick={() => setCount("all")}
+            style={{ ...S.segItem, borderColor: T.accent, background: drawCount === "all" ? T.accent : "transparent", color: drawCount === "all" ? "#FFFFFF" : T.text }}>
+            All
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+        <button className="dc-btn" style={S.btnPrimaryLg} onClick={draw}>Surprise me</button>
+      </div>
+
+      {emptyNotice && <div style={{ ...S.notice }} className="dc-in">No activities match those filters — try loosening one.</div>}
+
+      {shuffling && (
+        <div style={S.shuffleBox}>
+          <span className="dc-blink" style={{ ...S.dotBig, background: T.textTertiary, animationDelay: "0s" }} />
+          <span className="dc-blink" style={{ ...S.dotBig, background: T.textTertiary, animationDelay: ".2s" }} />
+          <span className="dc-blink" style={{ ...S.dotBig, background: T.textTertiary, animationDelay: ".4s" }} />
+        </div>
+      )}
+
+      {results && results.length === 1 && !shuffling && (
+        <div className="dc-flip-outer" style={S.flipOuter}>
+          <div className={`dc-flip-inner ${flip ? "flipped" : ""}`}>
+            <div className="dc-flip-face" style={{ ...S.resultCard, background: T.bgSubtle }} />
+            <div className="dc-flip-face dc-flip-back" style={S.resultCard}>
+              <div style={{ ...S.stripe, background: catById(results[0].category)?.color || T.accent }} />
+              <div style={{ padding: "22px 24px" }}>
+                <div style={S.eyebrowSm}>{catById(results[0].category)?.name || "Uncategorized"}</div>
+                <div style={S.cardTitle}>{results[0].name}</div>
+                <div style={S.cardMeta}>
+                  <span>{costDisplay(results[0].cost)}</span><span>·</span>
+                  <span>{results[0].location}</span><span>·</span>
+                  <span>{results[0].setting}</span><span>·</span>
+                  <span>{results[0].weather}</span>
+                </div>
+                {results[0].notes && <div style={S.cardNotes}>{results[0].notes}</div>}
+                <button className="dc-btn" style={{ ...S.doneBtnCard, ...(results[0].done ? S.doneBtnCardActive : {}) }} onClick={() => toggleDone(results[0].id)}>
+                  {results[0].done ? "Done ✓" : "Mark as done"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {results && results.length > 1 && (
+        <div style={S.grid}>
+          {results.map((a, i) => (
+            <div key={a.id} className="dc-in" style={{ ...S.miniCard, animationDelay: `${i * 0.03}s` }}>
+              <div style={{ ...S.stripeSm, background: catById(a.category)?.color || T.accent }} />
+              <div style={{ padding: "13px 15px" }}>
+                <div style={S.eyebrowSm}>{catById(a.category)?.name}</div>
+                <div style={S.miniTitle}>{a.name}</div>
+                <div style={S.miniMeta}>{costDisplay(a.cost)} · {a.location} · {a.setting}</div>
+                <button className="dc-btn" style={{ ...S.doneBtnMini, ...(a.done ? S.doneBtnCardActive : {}) }} onClick={() => toggleDone(a.id)}>
+                  {a.done ? "✓" : "Mark done"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- Manage Page ----------
+
+function ManagePage(props) {
+  const {
+    T, S, activities, allCount, search, setSearch, categories, catById,
+    openAdd, openEdit, deleteActivity, toggleDone,
+    showCatManager, setShowCatManager, newCatName, setNewCatName, newCatColor, setNewCatColor,
+    addCategory, removeCategory, openImport,
+    exportBackup, handleBackupFile, backupFileRef, backupBusy, backupMsg,
+  } = props;
+
+  return (
+    <div style={S.pageInner}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
+        <div>
+          <div style={S.h1}>Manage activities</div>
+          <div style={S.subtext}>{allCount} total</div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="dc-btn" style={S.btnGhost} onClick={openImport}>Import from Excel</button>
+          <button className="dc-btn" style={S.btnPrimary} onClick={openAdd}>+ Add activity</button>
+        </div>
+      </div>
+
+      <div style={{ ...S.panel, marginTop: 14 }}>
+        <div style={S.filterLabel}>Encrypted backup (for syncing via GitHub)</div>
+        <div style={{ color: T.textSecondary, fontSize: 12.5, marginBottom: 10, lineHeight: 1.5 }}>
+          Export downloads an encrypted file with everything below — commit it to your repo to update the copy others load. Import loads one back in (your passcode decrypts it).
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button className="dc-btn" style={S.btnGhost} disabled={backupBusy} onClick={exportBackup}>Export encrypted backup</button>
+          <button className="dc-btn" style={S.btnGhost} disabled={backupBusy} onClick={() => backupFileRef.current?.click()}>Import encrypted backup</button>
+          <input ref={backupFileRef} type="file" accept=".json" onChange={handleBackupFile} style={{ display: "none" }} />
+        </div>
+        {backupMsg && <div style={{ fontSize: 12.5, color: T.textSecondary, marginTop: 8 }}>{backupMsg}</div>}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, margin: "18px 0 14px", flexWrap: "wrap", alignItems: "center" }}>
+        <input placeholder="Search activities…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...S.input, maxWidth: 260 }} />
+        <button className="dc-btn" style={S.linkBtn} onClick={() => setShowCatManager(!showCatManager)}>
+          {showCatManager ? "Hide" : "Manage"} categories
+        </button>
+      </div>
+
+      {showCatManager && (
+        <div style={S.catManager} className="dc-in">
+          {categories.map((c) => (
+            <div key={c.id} style={S.catRow}>
+              <span style={{ ...S.dotSm, background: c.color }} />
+              <span style={{ flex: 1, color: T.text, fontSize: 13 }}>{c.name}</span>
+              <button className="dc-btn" style={S.xBtn} onClick={() => removeCategory(c.id)} title="Remove (only if unused)">✕</button>
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <input placeholder="New category name" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} style={{ ...S.input, flex: 1, minWidth: 140, margin: 0 }} />
+            <div style={{ display: "flex", gap: 4 }}>
+              {CATEGORY_PALETTE.map((sw) => (
+                <span key={sw} onClick={() => setNewCatColor(sw)} style={{ width: 18, height: 18, borderRadius: "50%", background: sw, cursor: "pointer", border: newCatColor === sw ? `2px solid ${T.text}` : "2px solid transparent" }} />
+              ))}
+            </div>
+            <button className="dc-btn" style={S.btnGhost} onClick={addCategory}>Add</button>
+          </div>
+        </div>
+      )}
+
+      <div style={S.tableWrap}>
+        <table>
+          <thead>
+            <tr>
+              <th style={S.th}></th>
+              <th style={S.th}>Name</th>
+              <th style={S.th}>Category</th>
+              <th style={S.th}>Cost</th>
+              <th style={S.th}>Location</th>
+              <th style={S.th}>Setting</th>
+              <th style={S.th}>Weather</th>
+              <th style={S.th}>Prep</th>
+              <th style={S.th}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {activities.map((a) => (
+              <tr key={a.id} className="dc-row">
+                <td style={S.td}><input type="checkbox" checked={a.done} onChange={() => toggleDone(a.id)} /></td>
+                <td style={{ ...S.td, fontWeight: 500, textDecoration: a.done ? "line-through" : "none", opacity: a.done ? 0.5 : 1 }}>{a.name}</td>
+                <td style={S.td}>
+                  <span style={S.pill}>
+                    <span style={{ ...S.dotSm, background: catById(a.category)?.color || "#999" }} />
+                    {catById(a.category)?.name || "—"}
+                  </span>
+                </td>
+                <td style={S.td}>{costDisplay(a.cost)}</td>
+                <td style={S.td}>{a.location}</td>
+                <td style={S.td}>{a.setting}</td>
+                <td style={S.td}>{a.weather}</td>
+                <td style={S.td}>{a.prep}</td>
+                <td style={{ ...S.td, whiteSpace: "nowrap" }}>
+                  <button className="dc-btn" style={S.xBtn} onClick={() => openEdit(a)}>Edit</button>
+                  <button className="dc-btn" style={S.xBtn} onClick={() => deleteActivity(a.id)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!activities.length && <div style={{ color: T.textSecondary, fontSize: 13, padding: 16 }}>No activities match your search.</div>}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Stats Page ----------
+
+function StatsPage({ T, S, activities, categories, catById, toggleDone, doneCount }) {
+  const total = activities.length;
+  const remaining = total - doneCount;
+  const doneList = activities.filter((a) => a.done).sort((a, b) => (b.doneDate || "").localeCompare(a.doneDate || ""));
+
+  const breakdown = categories.map((c) => {
+    const acts = activities.filter((a) => a.category === c.id);
+    const done = acts.filter((a) => a.done).length;
+    return { ...c, total: acts.length, done };
+  }).filter((c) => c.total > 0);
+
+  return (
+    <div style={S.pageInner}>
+      <div style={S.h1}>Stats &amp; history</div>
+      <div style={S.subtext}>Track what you've already done.</div>
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "18px 0" }}>
+        {[["Total activities", total], ["Done", doneCount], ["Remaining", remaining], ["Categories", categories.length]].map(([label, val]) => (
+          <div key={label} style={S.statCard}>
+            <div style={{ fontSize: 26, fontWeight: 700, color: T.text }}>{val}</div>
+            <div style={{ fontSize: 12.5, color: T.textSecondary, marginTop: 2 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={S.panel}>
+        <div style={S.filterLabel}>By category</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+          {breakdown.map((c) => (
+            <div key={c.id}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: T.text, marginBottom: 4 }}>
+                <span>{c.name}</span>
+                <span style={{ color: T.textSecondary }}>{c.done}/{c.total}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: T.bgSubtle, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${c.total ? (c.done / c.total) * 100 : 0}%`, background: c.color, borderRadius: 3 }} />
+              </div>
+            </div>
+          ))}
+          {!breakdown.length && <div style={{ color: T.textSecondary, fontSize: 13 }}>No activities yet.</div>}
+        </div>
+      </div>
+
+      <div style={S.panel}>
+        <div style={S.filterLabel}>History</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 8 }}>
+          {doneList.map((a) => (
+            <div key={a.id} className="dc-row" style={S.listRow}>
+              <span style={{ ...S.dotSm, background: catById(a.category)?.color || "#999" }} />
+              <span style={{ flex: 1, color: T.text, fontSize: 13.5 }}>{a.name}</span>
+              <span style={{ fontSize: 12, color: T.textSecondary }}>{a.doneDate}</span>
+              <button className="dc-btn" style={S.xBtn} onClick={() => toggleDone(a.id)}>Undo</button>
+            </div>
+          ))}
+          {!doneList.length && <div style={{ color: T.textSecondary, fontSize: 13, padding: "6px 0" }}>Nothing marked done yet — check things off from the Picker or Manage tab.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Styles ----------
+
+function mkStyles(T) {
+  return {
+    T,
+    page: { background: T.bg, minHeight: "100%", fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", color: T.text, boxSizing: "border-box" },
+    pageInner: { maxWidth: 900, margin: "0 auto", padding: "24px 20px 50px" },
+    topbar: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.bg, zIndex: 10 },
+    tabs: { display: "flex", gap: 4, background: T.bgSubtle, borderRadius: 10, padding: 4 },
+    tab: { padding: "7px 14px", borderRadius: 8, fontSize: 13.5, fontWeight: 500, color: T.textSecondary },
+    tabActive: { background: T.surface, color: T.text, boxShadow: T.shadow, fontWeight: 600 },
+    gearBtn: { background: "none", border: `1px solid ${T.border}`, borderRadius: 8, width: 34, height: 34, fontSize: 15, color: T.text },
+    settingsPop: { position: "absolute", right: 0, top: 42, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: 16, width: 220, boxShadow: T.shadow, zIndex: 20 },
+    h1: { fontSize: 26, fontWeight: 700, letterSpacing: -0.3, margin: "6px 0 2px" },
+    subtext: { fontSize: 14, color: T.textSecondary, marginBottom: 18 },
+    panel: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "18px 20px", marginBottom: 18 },
+    filterLabel: { fontSize: 11.5, letterSpacing: 0.4, textTransform: "uppercase", color: T.textSecondary, marginBottom: 8, fontWeight: 600 },
+    miniCaption: { fontSize: 11.5, color: T.textTertiary, marginBottom: 6 },
+    filterRow2: { display: "flex", gap: 28, flexWrap: "wrap", marginTop: 14 },
+    chipRow: { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" },
+    chip: { display: "flex", alignItems: "center", gap: 6, border: "1.5px solid", borderRadius: 999, padding: "6px 12px", fontSize: 13, fontWeight: 500 },
+    chipSm: { border: "1.5px solid", borderRadius: 999, padding: "5px 11px", fontSize: 12 },
+    segItem: { border: "1.5px solid", borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 600, minWidth: 30, textAlign: "center" },
+    dotSm: { width: 7, height: 7, borderRadius: "50%", display: "inline-block", flexShrink: 0 },
+    advToggle: { background: "none", border: "none", color: T.accent, fontSize: 13, cursor: "pointer", padding: "10px 0 2px", fontWeight: 600 },
+    advBox: { display: "flex", gap: 24, flexWrap: "wrap", paddingTop: 12, borderTop: `1px dashed ${T.border}`, marginTop: 10 },
+    btnPrimary: { background: T.accent, color: "#FFFFFF", border: "none", borderRadius: 9, padding: "9px 16px", fontWeight: 600, fontSize: 13.5 },
+    btnPrimaryLg: { background: T.accent, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "14px 34px", fontWeight: 700, fontSize: 15.5 },
+    btnSecondary: { background: "transparent", color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 9, padding: "9px 16px", fontWeight: 600, fontSize: 13.5 },
+    btnGhost: { background: "transparent", color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 9, padding: "9px 16px", fontWeight: 500, fontSize: 13.5 },
+    stepBtn: { background: T.bgSubtle, border: "none", width: 32, height: 32, fontSize: 16, color: T.text, fontWeight: 600 },
+    notice: { color: T.textSecondary, fontSize: 13.5, fontStyle: "italic", textAlign: "center", marginBottom: 14 },
+    shuffleBox: { display: "flex", justifyContent: "center", alignItems: "center", gap: 6, height: 50 },
+    dotBig: { width: 8, height: 8, borderRadius: "50%", display: "inline-block" },
+    flipOuter: { width: "100%", maxWidth: 420, height: 250, margin: "0 auto" },
+    resultCard: { position: "absolute", inset: 0, borderRadius: 16, overflow: "hidden", border: `1px solid ${T.border}`, boxShadow: T.shadow, background: T.surface },
+    stripe: { height: 5, width: "100%" },
+    stripeSm: { height: 4, width: "100%" },
+    eyebrowSm: { fontSize: 10.5, letterSpacing: 0.6, textTransform: "uppercase", color: T.textTertiary, fontWeight: 600 },
+    cardTitle: { fontSize: 21, fontWeight: 700, color: T.text, marginTop: 6, lineHeight: 1.2, letterSpacing: -0.2 },
+    cardMeta: { display: "flex", gap: 6, fontSize: 12.5, color: T.textSecondary, marginTop: 10, flexWrap: "wrap" },
+    cardNotes: { fontSize: 12.5, color: T.textSecondary, marginTop: 10, lineHeight: 1.45 },
+    doneBtnCard: { marginTop: 16, background: "transparent", border: `1.5px solid ${T.text}`, color: T.text, borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 600 },
+    doneBtnCardActive: { background: T.text, color: T.bg },
+    grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12, width: "100%" },
+    miniCard: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden" },
+    miniTitle: { fontSize: 14.5, fontWeight: 700, color: T.text, marginTop: 4, lineHeight: 1.25 },
+    miniMeta: { fontSize: 11.5, color: T.textSecondary, marginTop: 6 },
+    doneBtnMini: { marginTop: 8, background: "transparent", border: `1px solid ${T.text}`, color: T.text, borderRadius: 999, padding: "3px 10px", fontSize: 10.5, fontWeight: 600 },
+    input: { width: "100%", boxSizing: "border-box", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: "9px 11px", color: T.text, fontSize: 13.5, marginBottom: 10, outline: "none" },
+    linkBtn: { background: "none", border: "none", color: T.accent, fontSize: 13, fontWeight: 600 },
+    catManager: { background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: 10, padding: 14, marginBottom: 16 },
+    catRow: { display: "flex", alignItems: "center", gap: 8, padding: "5px 0" },
+    xBtn: { background: "none", border: "none", color: T.textSecondary, fontSize: 12.5, padding: "3px 6px", fontWeight: 500 },
+    listRow: { display: "flex", alignItems: "center", gap: 10, padding: "9px 6px", borderRadius: 6, borderBottom: `1px solid ${T.border}` },
+    pill: { display: "inline-flex", alignItems: "center", gap: 6, background: T.bgSubtle, borderRadius: 999, padding: "3px 9px", fontSize: 12 },
+    tableWrap: { overflowX: "auto", border: `1px solid ${T.border}`, borderRadius: 12 },
+    th: { textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: T.textSecondary, padding: "10px 12px", borderBottom: `1px solid ${T.border}`, fontWeight: 600, whiteSpace: "nowrap" },
+    td: { padding: "10px 12px", fontSize: 13, color: T.text, borderBottom: `1px solid ${T.border}`, whiteSpace: "nowrap" },
+    overlay: { position: "fixed", inset: 0, background: T.overlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 },
+    formBox: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto", boxShadow: T.shadow },
+    formTitle: { fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 14 },
+    formLabel: { fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: T.textSecondary, marginBottom: 4, display: "block", fontWeight: 600 },
+    statCard: { flex: "1 1 120px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "14px 16px" },
+  };
+}
+
+// ---------- Error boundary ----------
+// Catches any render crash and shows the real error instead of a blank/frozen
+// screen, with an escape hatch to wipe local data if it's a data problem.
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error("DateIdeaPicker crashed:", error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ background: "#fff", color: "#1D1D1F", fontFamily: "-apple-system, sans-serif", padding: 24, borderRadius: 12, border: "1px solid #E5E5EA", maxWidth: 520, margin: "24px auto" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Something crashed</div>
+          <div style={{ fontSize: 13, color: "#6E6E73", marginBottom: 12, lineHeight: 1.5 }}>
+            Copy this and send it over so it can be fixed:
+          </div>
+          <pre style={{ background: "#F5F5F7", padding: 12, borderRadius: 8, fontSize: 11.5, overflowX: "auto", whiteSpace: "pre-wrap" }}>
+            {String(this.state.error?.message || this.state.error)}
+          </pre>
+          <button
+            onClick={async () => {
+              try {
+                localStorage.removeItem("dc-date:activities");
+                localStorage.removeItem("dc-date:categories");
+              } catch {}
+              this.setState({ error: null });
+            }}
+            style={{ marginTop: 14, background: "#FF3B30", color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          >
+            Wipe local data and reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function DateIdeaPickerWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <DateIdeaPicker />
+    </ErrorBoundary>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<DateIdeaPickerWithBoundary />);
+
+</script>
+
+<!-- Bootstrap: transpile with the classic JSX runtime (React.createElement),
+     not the automatic runtime, since a plain script tag can't resolve the
+     "import ... from react/jsx-runtime" the automatic runtime emits. -->
+<script>
+  (function () {
+    var source = document.getElementById("app-source").textContent;
+    var result = Babel.transform(source, {
+      presets: [["react", { runtime: "classic" }]],
+    });
+    var run = new Function("React", "ReactDOM", "XLSX", result.code);
+    run(React, ReactDOM, XLSX);
+  })();
 </script>
 </body>
 </html>
