@@ -5,8 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>DC Date Picker</title>
 <style>
-  html, body { margin: 0; padding: 0; background: #FFFFFF; }
-  #root { min-height: 100vh; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #F7F3EF;
+    color: #17171A;
+  }
+  body {
+    min-height: 100vh;
+  }
+  #root {
+    min-height: 100vh;
+  }
 </style>
 </head>
 <body>
@@ -25,13 +35,13 @@ const { useState, useEffect, useRef, useMemo, Component } = React;
 
 const CATEGORY_PALETTE = ["#34C759", "#007AFF", "#AF52DE", "#FF9500", "#8E8E93", "#FF2D55", "#30B0C7", "#5856D6", "#FF3B30", "#FFCC00"];
 const ACCENT_PRESETS = [
-  { name: "Blue", hex: "#0071E3" },
+  { name: "Coral", hex: "#FF6B57" },
+  { name: "Blue", hex: "#2F6BFF" },
   { name: "Green", hex: "#34C759" },
   { name: "Orange", hex: "#FF9500" },
   { name: "Red", hex: "#FF3B30" },
   { name: "Purple", hex: "#AF52DE" },
   { name: "Pink", hex: "#FF2D55" },
-  { name: "Teal", hex: "#30B0C7" },
   { name: "Graphite", hex: "#3A3A3C" },
 ];
 
@@ -238,18 +248,18 @@ function getTheme(mode, accent) {
   if (mode === "dark") {
     return {
       mode, accent,
-      bg: "#000000", bgSubtle: "#1C1C1E", surface: "#1C1C1E", surfaceRaised: "#242426",
-      border: "#38383A", text: "#F5F5F7", textSecondary: "#98989D", textTertiary: "#68686D",
-      shadow: "0 1px 2px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.35)",
-      overlay: "rgba(0,0,0,0.6)",
+      bg: "#111315", bgSubtle: "#1A1D20", surface: "#181C1F", surfaceRaised: "#20262B",
+      border: "#2B3136", text: "#F4F1EE", textSecondary: "#B1B7BE", textTertiary: "#7F8A93",
+      shadow: "0 10px 30px rgba(0,0,0,0.28)",
+      overlay: "rgba(8,10,12,0.72)",
     };
   }
   return {
     mode, accent,
-    bg: "#FFFFFF", bgSubtle: "#F5F5F7", surface: "#FFFFFF", surfaceRaised: "#FFFFFF",
-    border: "#E5E5EA", text: "#1D1D1F", textSecondary: "#6E6E73", textTertiary: "#AEAEB2",
-    shadow: "0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08)",
-    overlay: "rgba(0,0,0,0.35)",
+    bg: "#F7F3EF", bgSubtle: "#F0EAE3", surface: "#FFFFFF", surfaceRaised: "#FDFBFA",
+    border: "#E6DED5", text: "#17171A", textSecondary: "#5B5A64", textTertiary: "#8B8A92",
+    shadow: "0 12px 28px rgba(25, 22, 19, 0.08), 0 2px 8px rgba(25, 22, 19, 0.04)",
+    overlay: "rgba(17,17,18,0.42)",
   };
 }
 
@@ -305,6 +315,7 @@ function DateIdeaPicker() {
   const [catSelectMode, setCatSelectMode] = useState(false);
   const [selectedCatIds, setSelectedCatIds] = useState([]);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState(null);
 
   const [importOpen, setImportOpen] = useState(false);
   const [importStep, setImportStep] = useState("upload");
@@ -442,6 +453,23 @@ function DateIdeaPicker() {
   function deleteActivity(id) {
     persistActivities(activities.filter((a) => a.id !== id));
     if (results) setResults(results.filter((a) => a.id !== id));
+  }
+  function requestDeleteActivity(activity) {
+    setActivityToDelete(activity);
+  }
+  async function confirmDeleteActivity() {
+    if (!activityToDelete) return;
+    const id = activityToDelete.id;
+    await persistActivities(activities.filter((a) => a.id !== id));
+    if (results) setResults(results.filter((a) => a.id !== id));
+    setActivityToDelete(null);
+  }
+  async function updateCategory(id, nextName, nextColor) {
+    const trimmed = nextName.trim();
+    if (!trimmed) return false;
+    const next = categories.map((c) => (c.id === id ? { ...c, name: trimmed, color: nextColor } : c));
+    await persistCategories(next);
+    return true;
   }
   function openEdit(a) {
     const fixed = normalizeActivity(a, categories);
@@ -857,11 +885,13 @@ function DateIdeaPicker() {
           search={search} setSearch={setSearch}
           categories={categories} catById={catById}
           openAdd={openAdd} openEdit={openEdit} deleteActivity={deleteActivity} toggleDone={toggleDone}
+          requestDeleteActivity={requestDeleteActivity}
           showCatManager={showCatManager} setShowCatManager={setShowCatManager}
           newCatName={newCatName} setNewCatName={setNewCatName}
           newCatColor={newCatColor} setNewCatColor={setNewCatColor}
           addCategory={addCategory}
           requestDeleteCategory={requestDeleteCategory}
+          updateCategory={updateCategory}
           catSelectMode={catSelectMode} setCatSelectMode={setCatSelectMode}
           selectedCatIds={selectedCatIds} toggleCatSelect={toggleCatSelect}
           setBulkDeleteConfirm={setBulkDeleteConfirm}
@@ -1039,6 +1069,22 @@ function DateIdeaPicker() {
               <button className="dc-btn" style={{ ...S.btnPrimary, background: "#FF3B30" }} onClick={confirmBulkDeleteCategories}>
                 Delete {selectedCatIds.length} categories
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activityToDelete && (
+        <div style={S.overlay} onClick={() => setActivityToDelete(null)}>
+          <div style={{ ...S.formBox, maxWidth: 380, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 26, marginBottom: 8 }}>⚠️</div>
+            <div style={S.formTitle}>Delete "{activityToDelete.name}"?</div>
+            <div style={{ color: T.textSecondary, fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>
+              This removes the activity from your list. This can't be undone.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button className="dc-btn" style={S.btnGhost} onClick={() => setActivityToDelete(null)}>Cancel</button>
+              <button className="dc-btn" style={{ ...S.btnPrimary, background: "#FF3B30" }} onClick={confirmDeleteActivity}>Delete activity</button>
             </div>
           </div>
         </div>
@@ -1282,15 +1328,30 @@ function PickerPage(props) {
 function ManagePage(props) {
   const {
     T, S, activities, allCount, search, setSearch, categories, catById,
-    openAdd, openEdit, deleteActivity, toggleDone,
+    openAdd, openEdit, deleteActivity, toggleDone, requestDeleteActivity,
     showCatManager, setShowCatManager, newCatName, setNewCatName, newCatColor, setNewCatColor,
-    addCategory, requestDeleteCategory, openImport,
+    addCategory, requestDeleteCategory, updateCategory, openImport,
     catSelectMode, setCatSelectMode, selectedCatIds, toggleCatSelect, setBulkDeleteConfirm,
     exportBackup, handleBackupFile, backupFileRef, backupBusy, backupMsg,
   } = props;
 
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
+  const [categoryEditId, setCategoryEditId] = useState(null);
+  const [categoryDraftName, setCategoryDraftName] = useState("");
+  const [categoryDraftColor, setCategoryDraftColor] = useState(CATEGORY_PALETTE[0]);
+
+  function startCategoryEdit(cat) {
+    setCategoryEditId(cat.id);
+    setCategoryDraftName(cat.name);
+    setCategoryDraftColor(cat.color);
+  }
+
+  async function saveCategoryEdit() {
+    if (!categoryEditId) return;
+    const saved = await updateCategory(categoryEditId, categoryDraftName, categoryDraftColor);
+    if (saved) setCategoryEditId(null);
+  }
 
   function handleSort(key) {
     if (sortKey === key) {
@@ -1375,18 +1436,55 @@ function ManagePage(props) {
             </div>
           </div>
 
-          {categories.map((c) => (
-            <div key={c.id} style={S.catRow}>
-              {catSelectMode && (
-                <input type="checkbox" checked={selectedCatIds.includes(c.id)} onChange={() => toggleCatSelect(c.id)} />
-              )}
-              <span style={{ ...S.dotSm, background: c.color }} />
-              <span style={{ flex: 1, color: T.text, fontSize: 13 }}>{c.name}</span>
-              {!catSelectMode && (
-                <button className="dc-btn" style={S.xBtn} onClick={() => requestDeleteCategory(c)} title="Delete category">✕</button>
-              )}
-            </div>
-          ))}
+          {categories.map((c) => {
+            const editing = categoryEditId === c.id;
+            return (
+              <div key={c.id} style={{ ...S.catRow, gap: 10, flexWrap: "wrap" }}>
+                {catSelectMode && (
+                  <input type="checkbox" checked={selectedCatIds.includes(c.id)} onChange={() => toggleCatSelect(c.id)} />
+                )}
+                {editing ? (
+                  <>
+                    <input
+                      value={categoryDraftName}
+                      onChange={(e) => setCategoryDraftName(e.target.value)}
+                      style={{ ...S.input, flex: 1, minWidth: 140, margin: 0 }}
+                    />
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      {CATEGORY_PALETTE.map((sw) => (
+                        <span
+                          key={sw}
+                          onClick={() => setCategoryDraftColor(sw)}
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: "50%",
+                            background: sw,
+                            cursor: "pointer",
+                            border: categoryDraftColor === sw ? `2px solid ${T.text}` : "2px solid transparent",
+                            boxShadow: categoryDraftColor === sw ? `0 0 0 2px ${T.bg}` : "none",
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <button className="dc-btn" style={S.btnGhost} onClick={saveCategoryEdit}>Save</button>
+                    <button className="dc-btn" style={S.xBtn} onClick={() => setCategoryEditId(null)}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ ...S.dotSm, background: c.color }} />
+                    <span style={{ flex: 1, color: T.text, fontSize: 13 }}>{c.name}</span>
+                    {!catSelectMode && (
+                      <>
+                        <button className="dc-btn" style={S.xBtn} onClick={() => startCategoryEdit(c)} title="Edit category">✎</button>
+                        <button className="dc-btn" style={S.xBtn} onClick={() => requestDeleteCategory(c)} title="Delete category">✕</button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
 
           <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input placeholder="New category name" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} style={{ ...S.input, flex: 1, minWidth: 140, margin: 0 }} />
@@ -1433,7 +1531,7 @@ function ManagePage(props) {
                 <td style={S.td}>{a.prep}</td>
                 <td style={{ ...S.td, whiteSpace: "nowrap" }}>
                   <button className="dc-btn" style={S.xBtn} onClick={() => openEdit(a)}>Edit</button>
-                  <button className="dc-btn" style={S.xBtn} onClick={() => deleteActivity(a.id)}>Delete</button>
+                  <button className="dc-btn" style={S.xBtn} onClick={() => requestDeleteActivity(a)}>Delete</button>
                 </td>
               </tr>
             ))}
@@ -1513,65 +1611,82 @@ function StatsPage({ T, S, activities, categories, catById, toggleDone, doneCoun
 function mkStyles(T) {
   return {
     T,
-    page: { background: T.bg, minHeight: "100%", fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", color: T.text, boxSizing: "border-box" },
-    pageInner: { maxWidth: 1400, width: "100%", boxSizing: "border-box", margin: "0 auto", padding: "24px clamp(16px, 4vw, 48px) 50px" },
-    topbar: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.bg, zIndex: 10 },
-    tabs: { display: "flex", gap: 4, background: T.bgSubtle, borderRadius: 10, padding: 4 },
-    tab: { padding: "7px 14px", borderRadius: 8, fontSize: 13.5, fontWeight: 500, color: T.textSecondary },
-    tabActive: { background: T.surface, color: T.text, boxShadow: T.shadow, fontWeight: 600 },
-    gearBtn: { background: "none", border: `1px solid ${T.border}`, borderRadius: 8, width: 34, height: 34, fontSize: 15, color: T.text },
-    settingsPop: { position: "absolute", right: 0, top: 42, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: 16, width: 220, boxShadow: T.shadow, zIndex: 20 },
-    h1: { fontSize: 26, fontWeight: 700, letterSpacing: -0.3, margin: "6px 0 2px" },
-    subtext: { fontSize: 14, color: T.textSecondary, marginBottom: 18 },
-    panel: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "18px 20px", marginBottom: 18 },
-    filterLabel: { fontSize: 11.5, letterSpacing: 0.4, textTransform: "uppercase", color: T.textSecondary, marginBottom: 8, fontWeight: 600 },
+    page: {
+      background: T.bg,
+      minHeight: "100%",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+      color: T.text,
+      boxSizing: "border-box",
+    },
+    pageInner: { maxWidth: 1200, width: "100%", boxSizing: "border-box", margin: "0 auto", padding: "22px clamp(16px, 4vw, 36px) 56px" },
+    topbar: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "14px 18px",
+      borderBottom: `1px solid ${T.border}`,
+      position: "sticky",
+      top: 0,
+      background: T.bg,
+      backdropFilter: "blur(14px)",
+      zIndex: 10,
+    },
+    tabs: { display: "flex", gap: 6, background: T.bgSubtle, borderRadius: 14, padding: 5, border: `1px solid ${T.border}` },
+    tab: { padding: "9px 14px", borderRadius: 10, fontSize: 13.5, fontWeight: 600, color: T.textSecondary, letterSpacing: -0.1 },
+    tabActive: { background: T.surface, color: T.text, boxShadow: T.shadow, fontWeight: 700 },
+    gearBtn: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, width: 38, height: 38, fontSize: 16, color: T.text, boxShadow: T.shadow },
+    settingsPop: { position: "absolute", right: 0, top: 48, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 16, width: 230, boxShadow: T.shadow, zIndex: 20 },
+    h1: { fontSize: 30, fontWeight: 800, letterSpacing: -0.45, margin: "8px 0 4px" },
+    subtext: { fontSize: 14, color: T.textSecondary, marginBottom: 18, lineHeight: 1.4 },
+    panel: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 18, padding: "18px 18px", marginBottom: 18, boxShadow: T.shadow },
+    filterLabel: { fontSize: 11.5, letterSpacing: 0.45, textTransform: "uppercase", color: T.textSecondary, marginBottom: 10, fontWeight: 700 },
     miniCaption: { fontSize: 11.5, color: T.textTertiary, marginBottom: 6 },
-    filterRow2: { display: "flex", gap: 28, flexWrap: "wrap", marginTop: 14 },
+    filterRow2: { display: "flex", gap: 24, flexWrap: "wrap", marginTop: 16 },
     chipRow: { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" },
-    chip: { display: "flex", alignItems: "center", gap: 6, border: "1.5px solid", borderRadius: 999, padding: "6px 12px", fontSize: 13, fontWeight: 500 },
-    chipSm: { border: "1.5px solid", borderRadius: 999, padding: "5px 11px", fontSize: 12 },
-    segItem: { border: "1.5px solid", borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 600, minWidth: 30, textAlign: "center" },
-    dotSm: { width: 7, height: 7, borderRadius: "50%", display: "inline-block", flexShrink: 0 },
-    advToggle: { background: "none", border: "none", color: T.accent, fontSize: 13, cursor: "pointer", padding: "10px 0 2px", fontWeight: 600 },
+    chip: { display: "flex", alignItems: "center", gap: 7, border: "1.5px solid", borderRadius: 999, padding: "7px 13px", fontSize: 13, fontWeight: 600, lineHeight: 1 },
+    chipSm: { border: "1.5px solid", borderRadius: 999, padding: "6px 11px", fontSize: 12, fontWeight: 600 },
+    segItem: { border: "1.5px solid", borderRadius: 999, padding: "7px 15px", fontSize: 13, fontWeight: 700, minWidth: 30, textAlign: "center" },
+    dotSm: { width: 8, height: 8, borderRadius: "50%", display: "inline-block", flexShrink: 0 },
+    advToggle: { background: "none", border: "none", color: T.accent, fontSize: 13, cursor: "pointer", padding: "12px 0 2px", fontWeight: 700 },
     advBox: { display: "flex", gap: 24, flexWrap: "wrap", paddingTop: 12, borderTop: `1px dashed ${T.border}`, marginTop: 10 },
-    btnPrimary: { background: T.accent, color: "#FFFFFF", border: "none", borderRadius: 9, padding: "9px 16px", fontWeight: 600, fontSize: 13.5 },
-    btnPrimaryLg: { background: T.accent, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "14px 34px", fontWeight: 700, fontSize: 15.5 },
-    btnSecondary: { background: "transparent", color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 9, padding: "9px 16px", fontWeight: 600, fontSize: 13.5 },
-    btnGhost: { background: "transparent", color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 9, padding: "9px 16px", fontWeight: 500, fontSize: 13.5 },
+    btnPrimary: { background: T.accent, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "10px 16px", fontWeight: 700, fontSize: 13.5, boxShadow: `0 8px 18px ${T.accent}55` },
+    btnPrimaryLg: { background: T.accent, color: "#FFFFFF", border: "none", borderRadius: 16, padding: "15px 34px", fontWeight: 800, fontSize: 15.5, boxShadow: `0 12px 26px ${T.accent}66` },
+    btnSecondary: { background: "transparent", color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: "10px 16px", fontWeight: 600, fontSize: 13.5 },
+    btnGhost: { background: "transparent", color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: "10px 16px", fontWeight: 600, fontSize: 13.5 },
     stepBtn: { background: T.bgSubtle, border: "none", width: 32, height: 32, fontSize: 16, color: T.text, fontWeight: 600 },
     notice: { color: T.textSecondary, fontSize: 13.5, fontStyle: "italic", textAlign: "center", marginBottom: 14 },
-    shuffleBox: { display: "flex", justifyContent: "center", alignItems: "center", gap: 6, height: 50 },
-    dotBig: { width: 8, height: 8, borderRadius: "50%", display: "inline-block" },
-    flipOuter: { width: "100%", maxWidth: 420, height: 250, margin: "0 auto" },
-    resultCard: { position: "absolute", inset: 0, borderRadius: 16, overflow: "hidden", border: `1px solid ${T.border}`, boxShadow: T.shadow, background: T.surface },
-    stripe: { height: 5, width: "100%" },
+    shuffleBox: { display: "flex", justifyContent: "center", alignItems: "center", gap: 8, height: 58 },
+    dotBig: { width: 10, height: 10, borderRadius: "50%", display: "inline-block" },
+    flipOuter: { width: "100%", maxWidth: 430, height: 280, margin: "0 auto" },
+    resultCard: { position: "absolute", inset: 0, borderRadius: 22, overflow: "hidden", border: `1px solid ${T.border}`, boxShadow: T.shadow, background: T.surface },
+    stripe: { height: 6, width: "100%" },
     stripeSm: { height: 4, width: "100%" },
-    eyebrowSm: { fontSize: 10.5, letterSpacing: 0.6, textTransform: "uppercase", color: T.textTertiary, fontWeight: 600 },
-    cardTitle: { fontSize: 21, fontWeight: 700, color: T.text, marginTop: 6, lineHeight: 1.2, letterSpacing: -0.2 },
+    eyebrowSm: { fontSize: 10.5, letterSpacing: 0.7, textTransform: "uppercase", color: T.textTertiary, fontWeight: 700 },
+    cardTitle: { fontSize: 25, fontWeight: 800, color: T.text, marginTop: 8, lineHeight: 1.15, letterSpacing: -0.25 },
     cardMeta: { display: "flex", gap: 6, fontSize: 12.5, color: T.textSecondary, marginTop: 10, flexWrap: "wrap" },
-    cardNotes: { fontSize: 12.5, color: T.textSecondary, marginTop: 10, lineHeight: 1.45 },
-    doneBtnCard: { marginTop: 16, background: "transparent", border: `1.5px solid ${T.text}`, color: T.text, borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 600 },
+    cardNotes: { fontSize: 13, color: T.textSecondary, marginTop: 12, lineHeight: 1.5 },
+    doneBtnCard: { marginTop: 18, background: "transparent", border: `1.5px solid ${T.text}`, color: T.text, borderRadius: 999, padding: "7px 15px", fontSize: 12, fontWeight: 700 },
     doneBtnCardActive: { background: T.text, color: T.bg },
-    grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12, width: "100%" },
-    miniCard: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden" },
-    miniTitle: { fontSize: 14.5, fontWeight: 700, color: T.text, marginTop: 4, lineHeight: 1.25 },
+    grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 14, width: "100%" },
+    miniCard: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: "hidden", boxShadow: T.shadow },
+    miniTitle: { fontSize: 15, fontWeight: 700, color: T.text, marginTop: 6, lineHeight: 1.3 },
     miniMeta: { fontSize: 11.5, color: T.textSecondary, marginTop: 6 },
-    doneBtnMini: { marginTop: 8, background: "transparent", border: `1px solid ${T.text}`, color: T.text, borderRadius: 999, padding: "3px 10px", fontSize: 10.5, fontWeight: 600 },
-    input: { width: "100%", boxSizing: "border-box", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: "9px 11px", color: T.text, fontSize: 13.5, marginBottom: 10, outline: "none" },
-    linkBtn: { background: "none", border: "none", color: T.accent, fontSize: 13, fontWeight: 600 },
-    catManager: { background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: 10, padding: 14, marginBottom: 16 },
-    catRow: { display: "flex", alignItems: "center", gap: 8, padding: "5px 0" },
-    xBtn: { background: "none", border: "none", color: T.textSecondary, fontSize: 12.5, padding: "3px 6px", fontWeight: 500 },
-    listRow: { display: "flex", alignItems: "center", gap: 10, padding: "9px 6px", borderRadius: 6, borderBottom: `1px solid ${T.border}` },
-    pill: { display: "inline-flex", alignItems: "center", gap: 6, background: T.bgSubtle, borderRadius: 999, padding: "3px 9px", fontSize: 12 },
-    tableWrap: { overflow: "auto", border: `1px solid ${T.border}`, borderRadius: 12, maxHeight: "65vh" },
-    th: { textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: T.textSecondary, padding: "10px 12px", borderBottom: `1px solid ${T.border}`, fontWeight: 600, whiteSpace: "nowrap", position: "sticky", top: 0, background: T.surface, zIndex: 1 },
+    doneBtnMini: { marginTop: 10, background: "transparent", border: `1.5px solid ${T.text}`, color: T.text, borderRadius: 999, padding: "4px 10px", fontSize: 10.5, fontWeight: 700 },
+    input: { width: "100%", boxSizing: "border-box", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", color: T.text, fontSize: 13.5, marginBottom: 10, outline: "none" },
+    linkBtn: { background: "none", border: "none", color: T.accent, fontSize: 13, fontWeight: 700 },
+    catManager: { background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: 12, padding: 14, marginBottom: 16 },
+    catRow: { display: "flex", alignItems: "center", gap: 8, padding: "7px 0" },
+    xBtn: { background: "none", border: "none", color: T.textSecondary, fontSize: 12.5, padding: "4px 6px", fontWeight: 700 },
+    listRow: { display: "flex", alignItems: "center", gap: 10, padding: "10px 8px", borderRadius: 8, borderBottom: `1px solid ${T.border}` },
+    pill: { display: "inline-flex", alignItems: "center", gap: 6, background: T.bgSubtle, borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600 },
+    tableWrap: { overflow: "auto", border: `1px solid ${T.border}`, borderRadius: 14, maxHeight: "65vh", background: T.surface },
+    th: { textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.45, color: T.textSecondary, padding: "11px 12px", borderBottom: `1px solid ${T.border}`, fontWeight: 700, whiteSpace: "nowrap", position: "sticky", top: 0, background: T.surface, zIndex: 1 },
     td: { padding: "10px 12px", fontSize: 13, color: T.text, borderBottom: `1px solid ${T.border}`, whiteSpace: "nowrap" },
     overlay: { position: "fixed", inset: 0, background: T.overlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 },
-    formBox: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto", boxShadow: T.shadow },
-    formTitle: { fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 14 },
-    formLabel: { fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: T.textSecondary, marginBottom: 4, display: "block", fontWeight: 600 },
-    statCard: { flex: "1 1 120px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "14px 16px" },
+    formBox: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto", boxShadow: T.shadow },
+    formTitle: { fontSize: 19, fontWeight: 800, color: T.text, marginBottom: 14 },
+    formLabel: { fontSize: 11, letterSpacing: 0.45, textTransform: "uppercase", color: T.textSecondary, marginBottom: 6, display: "block", fontWeight: 700 },
+    statCard: { flex: "1 1 120px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "16px 18px", boxShadow: T.shadow },
   };
 }
 
