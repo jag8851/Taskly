@@ -64,7 +64,16 @@ const seed = (name, category, cost, location, setting, weather, prep, notes) => 
   done: false, doneDate: null,
 });
 
-const DEFAULT_ACTIVITIES = [];
+const DEFAULT_ACTIVITIES = [
+  { id: "seed-poker", name: "Poker night", category: "stayin", cost: [0], location: "Indoor", setting: "Home", weather: "Any", prep: "None", vibe: "playful", supplies: ["playing cards"], notes: "Dealer's choice, low stakes." },
+  { id: "seed-paint", name: "Paint together", category: "stayin", cost: [0], location: "Indoor", setting: "Home", weather: "Any", prep: "None", vibe: "creative", supplies: ["paint & brushes", "paper & pencil"], notes: "Follow a Bob Ross video." },
+  { id: "seed-picnic", name: "Living room picnic", category: "stayin", cost: [1], location: "Indoor", setting: "Home", weather: "Any", prep: "None", vibe: "chill", supplies: ["blanket & pillows"], notes: "Order takeout, eat on the floor." },
+  { id: "seed-puzzle", name: "Puzzle race", category: "stayin", cost: [0], location: "Indoor", setting: "Home", weather: "Any", prep: "None", vibe: "playful", supplies: ["puzzle"], notes: "Same 500-piece puzzle, head to head." },
+  { id: "seed-cocktails", name: "Cocktail lab", category: "stayin", cost: [1], location: "Indoor", setting: "Home", weather: "Any", prep: "None", vibe: "creative", supplies: ["solo cups"], notes: "Invent a signature drink each." },
+  { id: "seed-hike", name: "Great Falls hike", category: "outdoors", cost: [0], location: "Outdoor", setting: "Away", weather: "Good weather", prep: "None", vibe: "adventure", supplies: [], notes: "Billy Goat Trail if you're feeling it." },
+  { id: "seed-monuments", name: "Monuments after dark", category: "outdoors", cost: [0], location: "Outdoor", setting: "Away", weather: "Any", prep: "None", vibe: "chill", supplies: [], notes: "Park once, walk the Mall." },
+  { id: "seed-annapolis", name: "Annapolis day trip", category: "outdoors", cost: [2], location: "Outdoor", setting: "Away", weather: "Good weather", prep: "Needs planning", vibe: "adventure", supplies: [], notes: "Waterfront lunch, ice cream, shops." },
+];
 
 const COST_LABEL = ["Free", "$", "$$", "$$$", "$$$$"];
 const COST_VALUES = [0, 1, 2, 3, 4];
@@ -80,6 +89,33 @@ const WEATHERS = ["Any", "Good weather", "Rain OK"];
 const PREPS = ["None", "Needs planning"];
 const COUNT_PRESETS = [1, 3, 5, 10];
 
+// ---------- Guided mode ----------
+
+const VIBES = [
+  { id: "chill", name: "Chill" },
+  { id: "creative", name: "Creative" },
+  { id: "playful", name: "Playful" },
+  { id: "adventure", name: "Adventure" },
+];
+const VIBE_IDS = VIBES.map((v) => v.id);
+const GUIDED_WHEN = [
+  { id: "tonight", name: "Tonight" },
+  { id: "weekend", name: "This weekend" },
+  { id: "someday", name: "Someday" },
+];
+const GUIDED_WHERE = [
+  { id: "home", name: "At home" },
+  { id: "dc", name: "Around DC" },
+  { id: "anywhere", name: "Anywhere" },
+];
+const GUIDED_COSTS = [
+  { id: 0, name: "Free" },
+  { id: 1, name: "$" },
+  { id: 2, name: "$$" },
+  { id: 3, name: "$$$" },
+];
+const GUIDED_COUNTS = [1, 3, "all"];
+
 function normalizeActivity(a, categories) {
   const catIds = categories.map((c) => c.id).concat(NONE_CATEGORY_ID);
   const rawCost = Array.isArray(a?.cost) ? a.cost : a?.cost !== undefined ? [a.cost] : [1];
@@ -93,6 +129,10 @@ function normalizeActivity(a, categories) {
     setting: SETTINGS_OPT.includes(a?.setting) ? a.setting : "Away",
     weather: WEATHERS.includes(a?.weather) ? a.weather : "Any",
     prep: PREPS.includes(a?.prep) ? a.prep : "None",
+    vibe: VIBE_IDS.includes(a?.vibe) ? a.vibe : null,
+    supplies: Array.isArray(a?.supplies)
+      ? [...new Set(a.supplies.map((s) => String(s).trim()).filter(Boolean))]
+      : [],
     notes: typeof a?.notes === "string" ? a.notes : "",
     done: !!a?.done,
     doneDate: a?.doneDate || null,
@@ -183,6 +223,8 @@ const FIELD_ALIASES = {
   setting: ["setting", "home/away"],
   weather: ["weather"],
   prep: ["prep", "preperation", "preparation"],
+  vibe: ["vibe", "mood", "energy"],
+  supplies: ["supplies", "items", "needs", "materials"],
   notes: ["notes", "info", "description"],
 };
 
@@ -240,6 +282,17 @@ function parsePrep(raw) {
   const s = String(raw || "").toLowerCase();
   if (!s || s.includes("none")) return "None";
   return "Needs planning";
+}
+function parseVibe(raw) {
+  const s = String(raw || "").trim().toLowerCase();
+  const hit = VIBES.find((v) => v.id === s || v.name.toLowerCase() === s);
+  return hit ? hit.id : null;
+}
+function parseSuppliesText(raw) {
+  return String(raw || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 // ---------- Theme ----------
@@ -303,6 +356,20 @@ function DateIdeaPicker() {
   const [flip, setFlip] = useState(false);
   const [emptyNotice, setEmptyNotice] = useState(false);
 
+  // ---------- Guided mode state ----------
+  const [pickerMode, setPickerMode] = useState("classic");
+  const [gWhen, setGWhen] = useState("tonight");
+  const [gWhere, setGWhere] = useState("home");
+  const [gSetting, setGSetting] = useState("Indoor");
+  const [gVibe, setGVibe] = useState(null);
+  const [gCost, setGCost] = useState(null);
+  const [gSuppliesOn, setGSuppliesOn] = useState(true);
+  const [gSuppliesOpen, setGSuppliesOpen] = useState(false);
+  const [gSupplies, setGSupplies] = useState(null); // null = all known supplies selected
+  const [gSupplySearch, setGSupplySearch] = useState("");
+  const [gCount, setGCount] = useState(3);
+  const [gResults, setGResults] = useState(null); // null = filter view, [] = no matches
+
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState("");
@@ -328,7 +395,7 @@ function DateIdeaPicker() {
 
   const blankForm = () => ({
     name: "", category: categories[0]?.id || "", cost: [1], location: "Indoor",
-    setting: "Away", weather: "Any", prep: "None", notes: "",
+    setting: "Away", weather: "Any", prep: "None", vibe: null, suppliesText: "", notes: "",
   });
   const [form, setForm] = useState(blankForm());
 
@@ -474,7 +541,7 @@ function DateIdeaPicker() {
   function openEdit(a) {
     const fixed = normalizeActivity(a, categories);
     setEditingId(fixed.id);
-    setForm({ name: fixed.name, category: fixed.category, cost: fixed.cost, location: fixed.location, setting: fixed.setting, weather: fixed.weather, prep: fixed.prep, notes: fixed.notes });
+    setForm({ name: fixed.name, category: fixed.category, cost: fixed.cost, location: fixed.location, setting: fixed.setting, weather: fixed.weather, prep: fixed.prep, vibe: fixed.vibe, suppliesText: (fixed.supplies || []).join(", "), notes: fixed.notes });
     setFormError("");
     setShowForm(true);
   }
@@ -483,6 +550,10 @@ function DateIdeaPicker() {
     setForm(blankForm());
     setFormError("");
     setShowForm(true);
+  }
+  function formToActivity(base) {
+    const { suppliesText, ...rest } = form;
+    return normalizeActivity({ ...base, ...rest, supplies: parseSuppliesText(suppliesText) }, categories);
   }
   function submitForm(e) {
     e.preventDefault();
@@ -493,10 +564,10 @@ function DateIdeaPicker() {
     }
     try {
       if (editingId) {
-        const next = activities.map((a) => (a.id === editingId ? normalizeActivity({ ...a, ...form }, categories) : a));
+        const next = activities.map((a) => (a.id === editingId ? formToActivity({ ...a }) : a));
         persistActivities(next);
       } else {
-        const next = [...activities, normalizeActivity({ id: uid(), ...form, done: false, doneDate: null }, categories)];
+        const next = [...activities, formToActivity({ id: uid(), done: false, doneDate: null })];
         persistActivities(next);
       }
       setShowForm(false);
@@ -579,6 +650,8 @@ function DateIdeaPicker() {
       setting: parseSetting(fieldMap.setting ? row[fieldMap.setting] : ""),
       weather: parseWeather(fieldMap.weather ? row[fieldMap.weather] : ""),
       prep: parsePrep(fieldMap.prep ? row[fieldMap.prep] : ""),
+      vibe: parseVibe(fieldMap.vibe ? row[fieldMap.vibe] : ""),
+      supplies: parseSuppliesText(fieldMap.supplies ? row[fieldMap.supplies] : ""),
       notes: fieldMap.notes ? String(row[fieldMap.notes] || "") : "",
     };
   }
@@ -606,8 +679,8 @@ function DateIdeaPicker() {
 
       newActs.push({
         id: uid(), name: t.name, category: cat.id, cost: t.cost, location: t.location,
-        setting: t.setting, weather: t.weather, prep: t.prep, notes: t.notes,
-        done: false, doneDate: null,
+        setting: t.setting, weather: t.weather, prep: t.prep, vibe: t.vibe, supplies: t.supplies,
+        notes: t.notes, done: false, doneDate: null,
       });
       existingNames.add(t.name.toLowerCase());
     });
@@ -622,6 +695,73 @@ function DateIdeaPicker() {
 
   const doneCount = activities.filter((a) => a.done).length;
   const filteredList = activities.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
+
+  // ---------- Guided mode logic ----------
+
+  const allSupplies = useMemo(() => {
+    const set = new Set();
+    activities.forEach((a) =>
+      (a.supplies || []).forEach((s) => {
+        const t = String(s).trim();
+        if (t) set.add(t);
+      })
+    );
+    return [...set].sort((x, y) => x.localeCompare(y));
+  }, [activities]);
+
+  const effSupplies = gSupplies === null ? allSupplies : gSupplies;
+
+  function toggleSupply(name) {
+    const cur = gSupplies === null ? allSupplies : gSupplies;
+    setGSupplies(cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]);
+  }
+
+  const guidedPool = useMemo(() => {
+    const have = new Set(effSupplies.map((s) => s.toLowerCase()));
+    return activities.filter((a) => {
+      if (a.done) return false;
+      if (gWhen === "tonight" && a.prep !== "None") return false;
+      if (gWhen === "someday" && a.prep !== "Needs planning") return false;
+      if (gWhere === "home" && a.setting !== "Home" && a.setting !== "Either") return false;
+      if (gWhere === "dc" && a.setting !== "Away" && a.setting !== "Either") return false;
+      if (gSetting !== "Either" && a.location !== gSetting && a.location !== "Either") return false;
+      if (gVibe && a.vibe && a.vibe !== gVibe) return false;
+      if (gCost !== null && !(Array.isArray(a.cost) ? a.cost : [a.cost]).includes(gCost)) return false;
+      if (gSuppliesOn && !(a.supplies || []).every((s) => have.has(String(s).toLowerCase()))) return false;
+      return true;
+    });
+  }, [activities, gWhen, gWhere, gSetting, gVibe, gCost, gSuppliesOn, effSupplies]);
+
+  function shuffleArr(arr) {
+    const p = [...arr];
+    for (let i = p.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    return p;
+  }
+
+  function guidedFind() {
+    const pool = shuffleArr(guidedPool);
+    const n = gCount === "all" ? pool.length : gCount;
+    setGResults(pool.slice(0, n));
+  }
+
+  function guidedReshuffleOne(id) {
+    if (!gResults) return;
+    const shown = new Set(gResults.map((a) => a.id));
+    const rest = shuffleArr(guidedPool.filter((a) => !shown.has(a.id)));
+    if (!rest.length) return;
+    setGResults(gResults.map((a) => (a.id === id ? rest[0] : a)));
+  }
+
+  const guidedSummary = [
+    (GUIDED_WHERE.find((w) => w.id === gWhere) || {}).name,
+    (GUIDED_WHEN.find((w) => w.id === gWhen) || {}).name,
+    gVibe ? (VIBES.find((v) => v.id === gVibe) || {}).name : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   function changeTheme(m) {
     setTheme(m);
@@ -861,6 +1001,19 @@ function DateIdeaPicker() {
       </div>
 
       {page === "picker" && (
+        <div style={{ display: "flex", justifyContent: "center", paddingTop: 16 }}>
+          <div style={S.tabs}>
+            {[["classic", "Classic"], ["guided", "Guided"]].map(([id, label]) => (
+              <div key={id} className="dc-tab" onClick={() => { setPickerMode(id); setGResults(null); }}
+                style={{ ...S.tab, ...(pickerMode === id ? S.tabActive : {}) }}>
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {page === "picker" && pickerMode === "classic" && (
         <PickerPage
           T={T} S={S}
           categories={categories} catFilter={catFilter} setCatFilter={setCatFilter}
@@ -875,6 +1028,27 @@ function DateIdeaPicker() {
           drawCount={drawCount} setCount={setCount}
           draw={draw} shuffling={shuffling} results={results} flip={flip}
           emptyNotice={emptyNotice} catById={catById} toggleDone={toggleDone}
+        />
+      )}
+
+      {page === "picker" && pickerMode === "guided" && (
+        <GuidedPage
+          T={T} S={S}
+          gWhen={gWhen} setGWhen={setGWhen}
+          gWhere={gWhere} setGWhere={setGWhere}
+          gSetting={gSetting} setGSetting={setGSetting}
+          gVibe={gVibe} setGVibe={setGVibe}
+          gCost={gCost} setGCost={setGCost}
+          gSuppliesOn={gSuppliesOn} setGSuppliesOn={setGSuppliesOn}
+          gSuppliesOpen={gSuppliesOpen} setGSuppliesOpen={setGSuppliesOpen}
+          allSupplies={allSupplies} effSupplies={effSupplies} toggleSupply={toggleSupply}
+          gSupplySearch={gSupplySearch} setGSupplySearch={setGSupplySearch}
+          gCount={gCount} setGCount={setGCount}
+          gResults={gResults} guidedPool={guidedPool} guidedSummary={guidedSummary}
+          guidedFind={guidedFind} guidedReshuffleOne={guidedReshuffleOne}
+          backToFilters={() => setGResults(null)}
+          toggleSingle={toggleSingle}
+          catById={catById} toggleDone={toggleDone}
         />
       )}
 
@@ -959,6 +1133,19 @@ function DateIdeaPicker() {
                 <select style={S.input} value={form.prep} onChange={(e) => setForm({ ...form, prep: e.target.value })}>
                   {PREPS.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={S.formLabel}>Vibe</label>
+                <select style={S.input} value={form.vibe || ""} onChange={(e) => setForm({ ...form, vibe: e.target.value || null })}>
+                  <option value="">— none —</option>
+                  {VIBES.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 2 }}>
+                <label style={S.formLabel}>Supplies (comma-separated)</label>
+                <input style={S.input} value={form.suppliesText} onChange={(e) => setForm({ ...form, suppliesText: e.target.value })} placeholder="e.g. playing cards, solo cups" />
               </div>
             </div>
             <label style={S.formLabel}>Notes (optional)</label>
@@ -1324,6 +1511,340 @@ function PickerPage(props) {
 }
 
 // ---------- Manage Page ----------
+
+// ---------- Guided mode ----------
+
+function GuidedToggle({ T, on, onChange }) {
+  return (
+    <div
+      className="dc-btn"
+      role="switch"
+      aria-checked={on}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!on);
+      }}
+      style={{
+        width: 46, height: 27, borderRadius: 999, flexShrink: 0,
+        background: on ? T.accent : "#C7C7CC",
+        position: "relative", transition: "background .15s ease",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute", top: 2.5, left: on ? 22 : 2.5,
+          width: 22, height: 22, borderRadius: "50%", background: "#FFFFFF",
+          boxShadow: "0 2px 5px rgba(0,0,0,0.25)", transition: "left .15s ease",
+        }}
+      />
+    </div>
+  );
+}
+
+function GuidedPill({ S, T, active, onClick, children }) {
+  return (
+    <div
+      className="dc-chip"
+      onClick={onClick}
+      style={{
+        ...S.chip,
+        borderColor: active ? T.accent : T.border,
+        background: active ? T.accent : "transparent",
+        color: active ? "#FFFFFF" : T.text,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SuppliesFilter(props) {
+  const {
+    T, S, enabled, setEnabled, open, setOpen,
+    allSupplies, selected, toggleSupply, search, setSearch,
+  } = props;
+  const shown = allSupplies.filter((s) => s.toLowerCase().includes(search.trim().toLowerCase()));
+  return (
+    <div style={{ ...S.panel, padding: 0, overflow: "hidden" }}>
+      <div
+        className="dc-btn"
+        onClick={() => {
+          if (enabled) setOpen(!open);
+        }}
+        style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", opacity: enabled ? 1 : 0.8 }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Supplies</div>
+        {enabled && (
+          <div style={{ fontSize: 12, color: T.textSecondary }}>
+            {selected.length} of {allSupplies.length} selected
+          </div>
+        )}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          {enabled && <div style={{ color: T.textTertiary, fontSize: 15 }}>{open ? "▴" : "▾"}</div>}
+          <GuidedToggle T={T} on={enabled} onChange={setEnabled} />
+        </div>
+      </div>
+      {!enabled && (
+        <div style={{ padding: "0 16px 14px", fontSize: 12, color: T.textTertiary }}>
+          Turn on to filter by supplies you own
+        </div>
+      )}
+      {enabled && open && (
+        <div style={{ padding: "0 16px 16px" }}>
+          <input
+            style={{ ...S.input, marginBottom: 8 }}
+            placeholder="Search supplies..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div style={{ maxHeight: 178, overflowY: "auto", border: `1px solid ${T.border}`, borderRadius: 12, padding: 6 }}>
+            {shown.map((s) => {
+              const active = selected.includes(s);
+              return (
+                <div
+                  key={s}
+                  className="dc-row"
+                  onClick={() => toggleSupply(s)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px", borderRadius: 8, cursor: "pointer" }}
+                >
+                  <div
+                    style={{
+                      width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+                      border: `1.5px solid ${active ? T.accent : T.border}`,
+                      background: active ? T.accent : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#FFFFFF", fontSize: 13, fontWeight: 800,
+                    }}
+                  >
+                    {active ? "✓" : ""}
+                  </div>
+                  <div style={{ fontSize: 13.5, color: T.text }}>{s}</div>
+                </div>
+              );
+            })}
+            {!shown.length && (
+              <div style={{ padding: 12, fontSize: 13, color: T.textTertiary }}>No supplies match that search.</div>
+            )}
+          </div>
+          <div style={{ fontSize: 11.5, color: T.textTertiary, marginTop: 8 }}>
+            Only supplies used by at least one activity are listed.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuidedResultCard({ T, S, a, catById, onToggleDone, onShuffleOne }) {
+  const cat = catById(a.category);
+  const whereName =
+    a.setting === "Home" ? "At home" : a.setting === "Away" ? "Around DC" : null;
+  const vibeName = a.vibe ? (VIBES.find((v) => v.id === a.vibe) || {}).name : null;
+  const tags = [whereName, vibeName, costDisplay(a.cost)].filter(Boolean).join(" · ");
+  return (
+    <div style={{ ...S.panel, display: "flex", gap: 12, alignItems: "center" }} className="dc-in">
+      <div
+        style={{
+          width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+          background: (cat && cat.color) || T.accent,
+          color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 22, fontWeight: 800,
+        }}
+      >
+        {(a.name || "?").charAt(0).toUpperCase()}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>{a.name}</div>
+        <div style={{ fontSize: 12.5, color: T.textSecondary, marginTop: 3 }}>{tags}</div>
+        {a.supplies && a.supplies.length > 0 && (
+          <div style={{ fontSize: 12.5, color: T.textSecondary, marginTop: 2 }}>
+            Needs: {a.supplies.join(", ")}
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", flexShrink: 0 }}>
+        <div
+          className="dc-btn"
+          title={a.done ? "Mark not done" : "Mark done"}
+          onClick={() => onToggleDone(a.id)}
+          style={{
+            width: 34, height: 34, borderRadius: "50%",
+            background: a.done ? T.accent : "transparent",
+            border: `1.5px solid ${a.done ? T.accent : T.border}`,
+            color: a.done ? "#FFFFFF" : T.textTertiary,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 15, fontWeight: 800,
+          }}
+        >
+          ✓
+        </div>
+        <div
+          className="dc-btn"
+          title="Swap this one"
+          onClick={() => onShuffleOne(a.id)}
+          style={{
+            width: 34, height: 34, borderRadius: "50%",
+            border: `1.5px solid ${T.border}`, color: T.textSecondary,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
+          }}
+        >
+          ⇄
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuidedPage(props) {
+  const {
+    T, S,
+    gWhen, setGWhen, gWhere, setGWhere, gSetting, setGSetting,
+    gVibe, setGVibe, gCost, setGCost,
+    gSuppliesOn, setGSuppliesOn, gSuppliesOpen, setGSuppliesOpen,
+    allSupplies, effSupplies, toggleSupply, gSupplySearch, setGSupplySearch,
+    gCount, setGCount, gResults, guidedPool, guidedSummary,
+    guidedFind, guidedReshuffleOne, backToFilters, toggleSingle,
+    catById, toggleDone,
+  } = props;
+
+  const section = { marginBottom: 18 };
+
+  if (gResults) {
+    return (
+      <div style={S.pageInner}>
+        <div style={S.h1}>
+          Your {gResults.length} {gResults.length === 1 ? "pick" : "picks"}
+        </div>
+        <div style={S.subtext}>{guidedSummary}</div>
+        {gResults.length === 0 ? (
+          <div style={S.panel}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 6 }}>
+              Nothing matches those filters
+            </div>
+            <div style={{ fontSize: 13.5, color: T.textSecondary, lineHeight: 1.5 }}>
+              Try loosening a filter — turning off supplies or picking "Anywhere" usually does it.
+            </div>
+          </div>
+        ) : (
+          gResults.map((a) => (
+            <GuidedResultCard
+              key={a.id}
+              T={T} S={S} a={a}
+              catById={catById}
+              onToggleDone={toggleDone}
+              onShuffleOne={guidedReshuffleOne}
+            />
+          ))
+        )}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
+          <button className="dc-btn" style={S.btnPrimaryLg} onClick={guidedFind}>
+            Shuffle again
+          </button>
+        </div>
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <button className="dc-btn" style={S.linkBtn} onClick={backToFilters}>
+            Back to filters
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={S.pageInner}>
+      <div style={S.h1}>What are we feeling?</div>
+      <div style={S.subtext}>Answer a few quick questions — we'll pick from your list.</div>
+
+      <div style={section}>
+        <div style={S.filterLabel}>When</div>
+        <div style={S.chipRow}>
+          {GUIDED_WHEN.map((w) => (
+            <GuidedPill key={w.id} S={S} T={T} active={gWhen === w.id} onClick={() => setGWhen(w.id)}>
+              {w.name}
+            </GuidedPill>
+          ))}
+        </div>
+      </div>
+
+      <div style={section}>
+        <div style={S.filterLabel}>Where</div>
+        <div style={S.chipRow}>
+          {GUIDED_WHERE.map((w) => (
+            <GuidedPill key={w.id} S={S} T={T} active={gWhere === w.id} onClick={() => setGWhere(w.id)}>
+              {w.name}
+            </GuidedPill>
+          ))}
+        </div>
+      </div>
+
+      <div style={section}>
+        <div style={S.filterLabel}>Setting</div>
+        <div style={S.chipRow}>
+          {["Indoor", "Outdoor", "Either"].map((s) => (
+            <GuidedPill key={s} S={S} T={T} active={gSetting === s} onClick={() => toggleSingle(gSetting, setGSetting, s)}>
+              {s}
+            </GuidedPill>
+          ))}
+        </div>
+      </div>
+
+      <div style={section}>
+        <div style={S.filterLabel}>Vibe</div>
+        <div style={S.chipRow}>
+          {VIBES.map((v) => (
+            <GuidedPill key={v.id} S={S} T={T} active={gVibe === v.id} onClick={() => toggleSingle(gVibe, setGVibe, v.id)}>
+              {v.name}
+            </GuidedPill>
+          ))}
+        </div>
+      </div>
+
+      <div style={section}>
+        <div style={S.filterLabel}>Cost</div>
+        <div style={S.chipRow}>
+          {GUIDED_COSTS.map((c) => (
+            <GuidedPill key={c.id} S={S} T={T} active={gCost === c.id} onClick={() => toggleSingle(gCost, setGCost, c.id)}>
+              {c.name}
+            </GuidedPill>
+          ))}
+        </div>
+      </div>
+
+      <div style={section}>
+        <SuppliesFilter
+          T={T} S={S}
+          enabled={gSuppliesOn} setEnabled={setGSuppliesOn}
+          open={gSuppliesOpen} setOpen={setGSuppliesOpen}
+          allSupplies={allSupplies} selected={effSupplies} toggleSupply={toggleSupply}
+          search={gSupplySearch} setSearch={setGSupplySearch}
+        />
+      </div>
+
+      <div style={section}>
+        <div style={S.filterLabel}>How many</div>
+        <div style={S.chipRow}>
+          {GUIDED_COUNTS.map((n) => {
+            const label = n === "all" ? "All" : String(n);
+            return (
+              <GuidedPill key={label} S={S} T={T} active={gCount === n} onClick={() => setGCount(n)}>
+                {label}
+              </GuidedPill>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", margin: "6px 0 14px" }}>
+        <button className="dc-btn" style={S.btnPrimaryLg} onClick={guidedFind}>
+          Find ideas
+        </button>
+      </div>
+      <div style={S.notice}>
+        {guidedPool.length} {guidedPool.length === 1 ? "idea matches" : "ideas match"}
+      </div>
+    </div>
+  );
+}
 
 function ManagePage(props) {
   const {
