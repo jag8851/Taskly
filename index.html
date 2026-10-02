@@ -116,23 +116,59 @@ const GUIDED_COSTS = [
 ];
 const GUIDED_COUNTS = [1, 3, "all"];
 
+// Auto-backfill: guess missing guided fields from what we already know,
+// so older activities (saved before these fields existed) still filter well.
+const CATEGORY_VIBE_GUESS = {
+  outdoors: "adventure",
+  stayin: "chill",
+  food: "chill",
+  nightlife: "playful",
+  classes: "creative",
+  active: "adventure",
+};
+function guessVibe(a, normCategory) {
+  if (VIBE_IDS.includes(a?.vibe)) return a.vibe;
+  return CATEGORY_VIBE_GUESS[normCategory] || null;
+}
+const SUPPLY_GUESS_RULES = [
+  ["playing cards", /playing cards|poker|\buno\b|blackjack|card game/i],
+  ["board games", /board game/i],
+  ["dice", /\bdice\b|yahtzee/i],
+  ["puzzle", /puzzle/i],
+  ["paint & brushes", /paint/i],
+  ["paper & pencil", /pictionary|\bdraw\b|sketch/i],
+  ["solo cups", /beer pong|flip cup|drinking game/i],
+  ["blanket & pillows", /picnic/i],
+];
+function guessSupplies(a) {
+  const existing = Array.isArray(a?.supplies)
+    ? [...new Set(a.supplies.map((s) => String(s).trim()).filter(Boolean))]
+    : [];
+  if (existing.length) return existing;
+  const text = `${a?.name || ""} ${a?.notes || ""}`;
+  const found = [];
+  SUPPLY_GUESS_RULES.forEach(([supply, re]) => {
+    if (re.test(text)) found.push(supply);
+  });
+  return [...new Set(found)];
+}
+
 function normalizeActivity(a, categories) {
   const catIds = categories.map((c) => c.id).concat(NONE_CATEGORY_ID);
+  const normCategory = catIds.includes(a?.category) ? a.category : NONE_CATEGORY_ID;
   const rawCost = Array.isArray(a?.cost) ? a.cost : a?.cost !== undefined ? [a.cost] : [1];
   const cleanCost = rawCost.filter((n) => Number.isInteger(n) && n >= 0 && n <= 4);
   return {
     id: a?.id || uid(),
     name: typeof a?.name === "string" && a.name.trim() ? a.name : "Untitled activity",
-    category: catIds.includes(a?.category) ? a.category : NONE_CATEGORY_ID,
+    category: normCategory,
     cost: cleanCost.length ? cleanCost : [1],
     location: LOCATIONS.includes(a?.location) ? a.location : "Indoor",
     setting: SETTINGS_OPT.includes(a?.setting) ? a.setting : "Away",
     weather: WEATHERS.includes(a?.weather) ? a.weather : "Any",
     prep: PREPS.includes(a?.prep) ? a.prep : "None",
-    vibe: VIBE_IDS.includes(a?.vibe) ? a.vibe : null,
-    supplies: Array.isArray(a?.supplies)
-      ? [...new Set(a.supplies.map((s) => String(s).trim()).filter(Boolean))]
-      : [],
+    vibe: guessVibe(a, normCategory),
+    supplies: guessSupplies(a),
     notes: typeof a?.notes === "string" ? a.notes : "",
     done: !!a?.done,
     doneDate: a?.doneDate || null,
@@ -359,8 +395,8 @@ function DateIdeaPicker() {
   // ---------- Guided mode state ----------
   const [pickerMode, setPickerMode] = useState("classic");
   const [gWhen, setGWhen] = useState("tonight");
-  const [gWhere, setGWhere] = useState("home");
-  const [gSetting, setGSetting] = useState("Indoor");
+  const [gWhere, setGWhere] = useState("anywhere");
+  const [gSetting, setGSetting] = useState("Either");
   const [gVibe, setGVibe] = useState(null);
   const [gCost, setGCost] = useState(null);
   const [gSuppliesOn, setGSuppliesOn] = useState(true);
@@ -724,7 +760,7 @@ function DateIdeaPicker() {
       if (gWhen === "someday" && a.prep !== "Needs planning") return false;
       if (gWhere === "home" && a.setting !== "Home" && a.setting !== "Either") return false;
       if (gWhere === "dc" && a.setting !== "Away" && a.setting !== "Either") return false;
-      if (gSetting !== "Either" && a.location !== gSetting && a.location !== "Either") return false;
+      if (gSetting && gSetting !== "Either" && a.location !== gSetting && a.location !== "Either") return false;
       if (gVibe && a.vibe && a.vibe !== gVibe) return false;
       if (gCost !== null && !(Array.isArray(a.cost) ? a.cost : [a.cost]).includes(gCost)) return false;
       if (gSuppliesOn && !(a.supplies || []).every((s) => have.has(String(s).toLowerCase()))) return false;
