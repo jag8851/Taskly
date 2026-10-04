@@ -499,6 +499,8 @@ function DateIdeaPicker() {
   const [gSetting, setGSetting] = useState([]);
   const [gVibe, setGVibe] = useState([]);
   const [gCost, setGCost] = useState([]);
+  const [gCats, setGCats] = useState([]);
+  const [gCatAdvOpen, setGCatAdvOpen] = useState(false);
   const [gSuppliesOn, setGSuppliesOn] = useState(true);
   const [gSuppliesOpen, setGSuppliesOpen] = useState(false);
   const [gSupplies, setGSupplies] = useState(null); // null = all known supplies selected
@@ -868,15 +870,16 @@ function DateIdeaPicker() {
           gWhen.includes("weekend");
         if (!okWhen) return false;
       }
-      if (gWhere.length) {
+      if (gWhere.length && !gWhere.includes("anywhere")) {
         const okWhere =
           (gWhere.includes("home") && (a.setting === "Home" || a.setting === "Either")) ||
-          (gWhere.includes("dc") && (a.setting === "Away" || a.setting === "Either")) ||
-          gWhere.includes("anywhere");
+          (gWhere.includes("dc") && (a.setting === "Away" || a.setting === "Either"));
         if (!okWhere) return false;
       }
       if (gSetting.length && !gSetting.some((s) => a.location === s || a.location === "Either")) return false;
-      if (gVibe.length && a.vibe && !gVibe.includes(a.vibe)) return false;
+      if (gCats.length) {
+        if (!gCats.includes(a.category)) return false;
+      } else if (gVibe.length && a.vibe && !gVibe.includes(a.vibe)) return false;
       if (gCost.length) {
         const costs = Array.isArray(a.cost) ? a.cost : [a.cost];
         if (!costs.some((c) => gCost.includes(c))) return false;
@@ -884,7 +887,7 @@ function DateIdeaPicker() {
       if (gSuppliesOn && !(a.supplies || []).every((s) => have.has(String(s).toLowerCase()))) return false;
       return true;
     });
-  }, [activities, gWhen, gWhere, gSetting, gVibe, gCost, gSuppliesOn, effSupplies]);
+  }, [activities, gWhen, gWhere, gSetting, gVibe, gCost, gCats, gSuppliesOn, effSupplies]);
 
   function shuffleArr(arr) {
     const p = [...arr];
@@ -914,6 +917,7 @@ function DateIdeaPicker() {
     gWhen.map((w) => (GUIDED_WHEN.find((x) => x.id === w) || {}).name).filter(Boolean).join(", "),
     gVibe.length ? gVibe.map((v) => (VIBES.find((x) => x.id === v) || {}).name).filter(Boolean).join(", ") : null,
     gCost.length ? gCost.map((c) => (GUIDED_COSTS.find((x) => x.id === c) || {}).name).filter(Boolean).join(", ") : null,
+    gCats.length ? gCats.map((id) => { const c = categories.find((x) => x.id === id); return c ? c.name : null; }).filter(Boolean).join(", ") : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -1168,6 +1172,9 @@ function DateIdeaPicker() {
           guidedFind={guidedFind} guidedReshuffleOne={guidedReshuffleOne}
           backToFilters={() => setGResults(null)}
           toggleMulti={toggleMulti}
+          gCats={gCats} setGCats={setGCats}
+          gCatAdvOpen={gCatAdvOpen} setGCatAdvOpen={setGCatAdvOpen}
+          categories={categories}
           catById={catById} toggleDone={toggleDone}
         />
       )}
@@ -1919,10 +1926,22 @@ function GuidedPage(props) {
     allSupplies, effSupplies, toggleSupply, gSupplySearch, setGSupplySearch,
     gCount, setGCount, gResults, guidedPool, guidedSummary,
     guidedFind, guidedReshuffleOne, backToFilters, toggleMulti,
+    gCats, setGCats, gCatAdvOpen, setGCatAdvOpen, categories,
     catById, toggleDone,
   } = props;
 
   const section = { marginBottom: 18 };
+
+  // "Anywhere" is exclusive: picking it clears the specifics, picking a
+  // specific clears "Anywhere". Empty selection = no filter.
+  const toggleWhere = (id) => {
+    if (id === "anywhere") {
+      setGWhere(gWhere.includes("anywhere") ? [] : ["anywhere"]);
+    } else {
+      const rest = gWhere.filter((w) => w !== "anywhere");
+      setGWhere(rest.includes(id) ? rest.filter((w) => w !== id) : [...rest, id]);
+    }
+  };
 
   if (gResults) {
     return (
@@ -1985,7 +2004,7 @@ function GuidedPage(props) {
         <div style={S.filterLabel}>Where</div>
         <div style={S.chipRow}>
           {GUIDED_WHERE.map((w) => (
-            <GuidedPill key={w.id} S={S} T={T} active={gWhere.includes(w.id)} onClick={() => toggleMulti(gWhere, setGWhere, w.id)}>
+            <GuidedPill key={w.id} S={S} T={T} active={gWhere.includes(w.id)} onClick={() => toggleWhere(w.id)}>
               {w.name}
             </GuidedPill>
           ))}
@@ -2005,13 +2024,38 @@ function GuidedPage(props) {
 
       <div style={section}>
         <div style={S.filterLabel}>Vibe</div>
-        <div style={S.chipRow}>
-          {VIBES.map((v) => (
-            <GuidedPill key={v.id} S={S} T={T} active={gVibe.includes(v.id)} onClick={() => toggleMulti(gVibe, setGVibe, v.id)}>
-              {v.name}
-            </GuidedPill>
-          ))}
+        <div style={gCats.length ? { opacity: 0.35, pointerEvents: "none" } : {}}>
+          <div style={S.chipRow}>
+            {VIBES.map((v) => (
+              <GuidedPill key={v.id} S={S} T={T} active={gVibe.includes(v.id)} onClick={() => toggleMulti(gVibe, setGVibe, v.id)}>
+                {v.name}
+              </GuidedPill>
+            ))}
+          </div>
         </div>
+        <div
+          className="dc-btn"
+          onClick={() => setGCatAdvOpen(!gCatAdvOpen)}
+          style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 12.5, color: T.textSecondary, cursor: "pointer" }}
+        >
+          <span style={{ transform: gCatAdvOpen ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform .15s" }}>›</span>
+          Advanced: pick categories instead{gCats.length ? ` (${gCats.length})` : ""}
+        </div>
+        {gCatAdvOpen && (
+          <div className="dc-in" style={{ ...S.chipRow, marginTop: 8 }}>
+            {categories.map((c) => (
+              <GuidedPill key={c.id} S={S} T={T} active={gCats.includes(c.id)} onClick={() => toggleMulti(gCats, setGCats, c.id)}>
+                <span style={{ ...S.dotSm, background: c.color, marginRight: 6 }} />
+                {c.name}
+              </GuidedPill>
+            ))}
+          </div>
+        )}
+        {gCats.length > 0 && (
+          <div style={{ fontSize: 12, color: T.textTertiary, marginTop: 6 }}>
+            Filtering by category — vibe picks are paused.
+          </div>
+        )}
       </div>
 
       <div style={section}>
@@ -2073,6 +2117,7 @@ function ManagePage(props) {
 
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
+  const [supFor, setSupFor] = useState(null);
   const [categoryEditId, setCategoryEditId] = useState(null);
   const [categoryDraftName, setCategoryDraftName] = useState("");
   const [categoryDraftColor, setCategoryDraftColor] = useState(CATEGORY_PALETTE[0]);
@@ -2106,6 +2151,7 @@ function ManagePage(props) {
       switch (sortKey) {
         case "name": av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
         case "category": av = (catById(a.category)?.name || "").toLowerCase(); bv = (catById(b.category)?.name || "").toLowerCase(); break;
+        case "vibe": av = ((VIBES.find((v) => v.id === a.vibe) || {}).name || "").toLowerCase(); bv = ((VIBES.find((v) => v.id === b.vibe) || {}).name || "").toLowerCase(); break;
         case "cost": av = Math.min(...(a.cost || [1])); bv = Math.min(...(b.cost || [1])); break;
         default: av = a[sortKey]; bv = b[sortKey];
       }
@@ -2241,6 +2287,7 @@ function ManagePage(props) {
               <th style={S.th}></th>
               <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("name")}>Name{sortArrow("name")}</th>
               <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("category")}>Category{sortArrow("category")}</th>
+              <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("vibe")}>Vibe{sortArrow("vibe")}</th>
               <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("cost")}>Cost{sortArrow("cost")}</th>
               <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("location")}>Location{sortArrow("location")}</th>
               <th style={{ ...S.th, cursor: "pointer" }} onClick={() => handleSort("setting")}>Setting{sortArrow("setting")}</th>
@@ -2251,15 +2298,28 @@ function ManagePage(props) {
           </thead>
           <tbody>
             {sortedActivities.map((a) => (
-              <tr key={a.id} className="dc-row">
+              <React.Fragment key={a.id}>
+              <tr className="dc-row">
                 <td style={S.td}><input type="checkbox" checked={a.done} onChange={() => toggleDone(a.id)} /></td>
-                <td style={{ ...S.td, fontWeight: 500, textDecoration: a.done ? "line-through" : "none", opacity: a.done ? 0.5 : 1 }}>{a.emoji ? `${a.emoji} ` : ""}{a.name}</td>
+                <td style={{ ...S.td, fontWeight: 500, textDecoration: a.done ? "line-through" : "none", opacity: a.done ? 0.5 : 1 }}>
+                  {a.emoji ? `${a.emoji} ` : ""}{a.name}
+                  {(a.supplies || []).length > 0 && (
+                    <button
+                      className="dc-btn" title="Show supplies"
+                      onClick={() => setSupFor(supFor === a.id ? null : a.id)}
+                      style={{ ...S.xBtn, marginLeft: 8, textDecoration: "none", opacity: 1 }}
+                    >
+                      🧰 {(a.supplies || []).length}
+                    </button>
+                  )}
+                </td>
                 <td style={S.td}>
                   <span style={S.pill}>
                     <span style={{ ...S.dotSm, background: catById(a.category)?.color || "#999" }} />
                     {catById(a.category)?.name || "—"}
                   </span>
                 </td>
+                <td style={S.td}>{(VIBES.find((v) => v.id === a.vibe) || {}).name || "—"}</td>
                 <td style={S.td}>{costDisplay(a.cost)}</td>
                 <td style={S.td}>{a.location}</td>
                 <td style={S.td}>{a.setting}</td>
@@ -2270,6 +2330,17 @@ function ManagePage(props) {
                   <button className="dc-btn" style={S.xBtn} onClick={() => requestDeleteActivity(a)}>Delete</button>
                 </td>
               </tr>
+              {supFor === a.id && (
+                <tr key={`${a.id}-sup`}>
+                  <td colSpan={10} style={{ ...S.td, background: T.bgSubtle }}>
+                    <span style={{ fontSize: 12, color: T.textSecondary, marginRight: 8 }}>Needs for the supplies filter:</span>
+                    {(a.supplies || []).map((s) => (
+                      <span key={s} style={{ ...S.pill, marginRight: 6 }}>{s}</span>
+                    ))}
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
