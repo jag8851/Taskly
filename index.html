@@ -220,6 +220,14 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 // ---------- Passcode + encryption ----------
 
+// Fixed passcode. Only its SHA-256 digest is stored here, split into
+// chunks so it isn't greppable as one string — the plaintext never appears
+// in the source. Fresh installs are pre-seeded with this (see startup effect).
+const FIXED_PASSCODE_DIGEST = [
+  "ee09198e", "46224875", "cf399285", "11ef2b85",
+  "5895c43e", "e86d1de8", "94ee82bc", "7c990afa",
+].join("");
+
 async function sha256Hex(str) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -477,7 +485,11 @@ function DateIdeaPicker() {
           setPendingSeedBlob(seedBlob);
           setLockMode("seed");
         } else {
-          setLockMode("create");
+          // No passcode yet and no shared backup: pre-seed the fixed
+          // passcode digest so the app unlocks with it immediately.
+          await saveKey("dc-date:passHash", FIXED_PASSCODE_DIGEST);
+          setPassHash(FIXED_PASSCODE_DIGEST);
+          setLockMode("hash");
         }
       }
       const finalCats = cats && cats.length ? cats : DEFAULT_CATEGORIES;
@@ -893,10 +905,10 @@ function DateIdeaPicker() {
   }
 
   async function resetPasscode() {
-    await saveKey("dc-date:passHash", null);
-    setPassHash(null);
+    await saveKey("dc-date:passHash", FIXED_PASSCODE_DIGEST);
+    setPassHash(FIXED_PASSCODE_DIGEST);
     setUnlocked(false);
-    setLockMode("create");
+    setLockMode("hash");
     setPendingSeedBlob(null);
     setPassInput("");
     setPassConfirm("");
@@ -906,15 +918,15 @@ function DateIdeaPicker() {
   async function resetAllData() {
     await saveKey("dc-date:activities", DEFAULT_ACTIVITIES);
     await saveKey("dc-date:categories", DEFAULT_CATEGORIES);
-    await saveKey("dc-date:passHash", null);
+    await saveKey("dc-date:passHash", FIXED_PASSCODE_DIGEST);
     await saveKey("dc-date:settings", null);
     setActivities(DEFAULT_ACTIVITIES);
     setCategories(DEFAULT_CATEGORIES);
     setTheme("light");
     setAccent(ACCENT_PRESETS[0].hex);
-    setPassHash(null);
+    setPassHash(FIXED_PASSCODE_DIGEST);
     setUnlocked(false);
-    setLockMode("create");
+    setLockMode("hash");
     setPendingSeedBlob(null);
     setPassInput("");
     setPassConfirm("");
@@ -2312,102 +2324,6 @@ class ErrorBoundary extends Component {
   }
 }
 
-// ---------- Lock screen ----------
-// The password is never stored in plaintext. LOCK_DIGEST is the SHA-256 of
-// (salt + password), split into chunks so it isn't greppable as one string.
-// To change the password, replace the chunks with the SHA-256 hex of "taskly-lock:NEWPASS".
-const LOCK_SALT = "taskly-lock:";
-const LOCK_DIGEST = [
-  "eadff62d", "9dda5d28", "4d4749b1", "92b35eec",
-  "e54ac458", "ee093139", "f9933b23", "98f49c1a",
-].join("");
-const LOCK_SESSION_KEY = "dc-date:unlocked";
-
-async function lockHash(password) {
-  const data = new TextEncoder().encode(LOCK_SALT + password);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function LockScreen({ onUnlock }) {
-  const [pw, setPw] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const submit = async (e) => {
-    if (e) e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      if (!window.crypto || !crypto.subtle) {
-        setError("This browser can't verify the password — try Chrome or Safari.");
-        return;
-      }
-      const h = await lockHash(pw);
-      if (h === LOCK_DIGEST) {
-        try { sessionStorage.setItem(LOCK_SESSION_KEY, "1"); } catch (err) {}
-        onUnlock();
-      } else {
-        setError("Wrong password — try again.");
-        setPw("");
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F3EF", padding: 20, fontFamily: "-apple-system, sans-serif" }}>
-      <form onSubmit={submit} style={{ background: "#fff", borderRadius: 16, padding: 32, maxWidth: 340, width: "100%", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", textAlign: "center" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>{"\uD83D\uDD12"}</div>
-        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>DC Date Picker</div>
-        <div style={{ fontSize: 13, color: "#6E6E73", marginBottom: 20 }}>Enter the password to continue</div>
-        <input
-          type="password"
-          inputMode="numeric"
-          autoComplete="off"
-          autoFocus
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          placeholder="Password"
-          style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", fontSize: 16, borderRadius: 10, border: "1px solid #D1D1D6", marginBottom: 12, textAlign: "center", letterSpacing: 4 }}
-        />
-        {error && <div style={{ color: "#FF3B30", fontSize: 13, marginBottom: 12 }}>{error}</div>}
-        <button
-          type="submit"
-          disabled={busy}
-          style={{ width: "100%", padding: "12px", fontSize: 15, fontWeight: 600, color: "#fff", background: busy ? "#8E8E93" : "#007AFF", border: "none", borderRadius: 10, cursor: busy ? "default" : "pointer" }}
-        >
-          {busy ? "Checking…" : "Unlock"}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function AppGate() {
-  const [unlocked, setUnlocked] = useState(() => {
-    try { return sessionStorage.getItem(LOCK_SESSION_KEY) === "1"; } catch (err) { return false; }
-  });
-  const lock = () => {
-    try { sessionStorage.removeItem(LOCK_SESSION_KEY); } catch (err) {}
-    setUnlocked(false);
-  };
-  if (!unlocked) return <LockScreen onUnlock={() => setUnlocked(true)} />;
-  return (
-    <React.Fragment>
-      <DateIdeaPickerWithBoundary />
-      <button
-        onClick={lock}
-        title="Lock app"
-        aria-label="Lock app"
-        style={{ position: "fixed", bottom: 14, right: 14, zIndex: 9999, width: 40, height: 40, borderRadius: "50%", border: "1px solid #D1D1D6", background: "rgba(255,255,255,0.9)", fontSize: 18, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}
-      >
-        {"\uD83D\uDD12"}
-      </button>
-    </React.Fragment>
-  );
-}
-
 function DateIdeaPickerWithBoundary() {
   return (
     <ErrorBoundary>
@@ -2416,7 +2332,7 @@ function DateIdeaPickerWithBoundary() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<AppGate />);
+ReactDOM.createRoot(document.getElementById("root")).render(<DateIdeaPickerWithBoundary />);
 
 </script>
 
