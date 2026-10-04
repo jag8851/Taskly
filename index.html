@@ -174,6 +174,73 @@ function guessSupplies(a) {
   });
   return [...new Set(found)];
 }
+const EMOJI_GUESS_RULES = [
+  ["🍸", /cocktail|beer pong|flip cup|drinking game|\bbar\b|brewery|bidding war/i],
+  ["🎨", /paint|watercolor/i],
+  ["🧺", /picnic/i],
+  ["🧩", /puzzle/i],
+  ["🥾", /hike|\btrail\b/i],
+  ["🏛️", /museum|monument|gallery/i],
+  ["⛵", /sail|boat|annapolis|kayak/i],
+  ["🥏", /disc golf|frisbee/i],
+  ["🏈", /football/i],
+  ["🏐", /spikeball|volleyball/i],
+  ["🏓", /pickleball|ping pong|table tennis/i],
+  ["🎃", /pumpkin|halloween/i],
+  ["📌", /vision board/i],
+  ["🦢", /origami/i],
+  ["🏕️", /camp/i],
+  ["🍎", /\bapple\b|orchard/i],
+  ["🌸", /flower picking|\bgarden\b/i],
+  ["🎬", /movie|drive-in|cinema/i],
+  ["🃏", /poker|\buno\b|blackjack|card game|\boh hell\b/i],
+  ["🎲", /dice|yahtzee|board game/i],
+  ["✏️", /\bdraw\b|sketch/i],
+  ["🧶", /crochet|knit/i],
+  ["🔥", /bonfire|fire pit|campfire/i],
+  ["🥤", /smoothie|milkshake/i],
+  ["🌽", /cornhole/i],
+  ["🎯", /bocce|darts|axe throwing/i],
+  ["🌅", /sunset|sunrise/i],
+  ["🚗", /\bdrive\b|road trip/i],
+  ["☕", /coffee/i],
+  ["🍷", /wine/i],
+  ["🍺", /\bbeer\b/i],
+  ["🍦", /ice cream|gelato/i],
+  ["🥞", /brunch|pancake|waffle/i],
+  ["🍳", /cook-off|\bcook\b|baking|\bbake\b/i],
+  ["🎵", /concert|music|karaoke/i],
+  ["🎮", /video game|gaming/i],
+  ["✨", /stargaz/i],
+  ["💃", /danc/i],
+  ["📸", /photo/i],
+  ["🎳", /bowl/i],
+  ["⛳", /\bgolf\b/i],
+  ["🎾", /tennis/i],
+  ["⚽", /soccer/i],
+  ["🏀", /basketball/i],
+  ["⚾", /baseball/i],
+  ["🚲", /\bbik\b|cycl/i],
+  ["🏊", /swim/i],
+  ["🧗", /climb/i],
+  ["🧘", /yoga/i],
+  ["📚", /book|read/i],
+  ["🛍️", /shop/i],
+  ["🎭", /comedy|\btheater\b|\bshow\b/i],
+  ["🕹️", /arcade/i],
+  ["🎰", /casino/i],
+];
+const CATEGORY_EMOJI = {
+  outdoors: "🌳", museums: "🏛️", food: "🍽️", nightlife: "🌃",
+  stayin: "🏠", classes: "🎓", active: "⚡", none: "✨",
+};
+function emojiFor(name, category) {
+  const text = String(name || "");
+  for (const [emoji, re] of EMOJI_GUESS_RULES) {
+    if (re.test(text)) return emoji;
+  }
+  return CATEGORY_EMOJI[category] || "✨";
+}
 
 function normalizeActivity(a, categories) {
   const catIds = categories.map((c) => c.id).concat(NONE_CATEGORY_ID);
@@ -191,6 +258,7 @@ function normalizeActivity(a, categories) {
     prep: PREPS.includes(a?.prep) ? a.prep : "None",
     vibe: guessVibe(a, normCategory),
     supplies: guessSupplies(a),
+    emoji: typeof a?.emoji === "string" && a.emoji.trim() ? a.emoji.trim() : emojiFor(a?.name, normCategory),
     notes: typeof a?.notes === "string" ? a.notes : "",
     done: !!a?.done,
     doneDate: a?.doneDate || null,
@@ -290,6 +358,7 @@ const FIELD_ALIASES = {
   weather: ["weather"],
   prep: ["prep", "preperation", "preparation"],
   vibe: ["vibe", "mood", "energy"],
+  emoji: ["emoji", "icon"],
   supplies: ["supplies", "items", "needs", "materials"],
   notes: ["notes", "info", "description"],
 };
@@ -391,7 +460,8 @@ function DateIdeaPicker() {
   const [theme, setTheme] = useState("light");
   const [accent, setAccent] = useState(ACCENT_PRESETS[0].hex);
   const [page, setPage] = useState("picker");
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState("appearance");
+  const [settingsAdvOpen, setSettingsAdvOpen] = useState(false);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
 
   const [passHash, setPassHash] = useState(null);
@@ -424,11 +494,11 @@ function DateIdeaPicker() {
 
   // ---------- Guided mode state ----------
   const [pickerMode, setPickerMode] = useState("guided");
-  const [gWhen, setGWhen] = useState("tonight");
-  const [gWhere, setGWhere] = useState("anywhere");
-  const [gSetting, setGSetting] = useState("Either");
-  const [gVibe, setGVibe] = useState(null);
-  const [gCost, setGCost] = useState(null);
+  const [gWhen, setGWhen] = useState(["tonight"]);
+  const [gWhere, setGWhere] = useState(["anywhere"]);
+  const [gSetting, setGSetting] = useState([]);
+  const [gVibe, setGVibe] = useState([]);
+  const [gCost, setGCost] = useState([]);
   const [gSuppliesOn, setGSuppliesOn] = useState(true);
   const [gSuppliesOpen, setGSuppliesOpen] = useState(false);
   const [gSupplies, setGSupplies] = useState(null); // null = all known supplies selected
@@ -461,7 +531,7 @@ function DateIdeaPicker() {
 
   const blankForm = () => ({
     name: "", category: categories[0]?.id || "", cost: [1], location: "Indoor",
-    setting: "Away", weather: "Any", prep: "None", vibe: null, suppliesText: "", notes: "",
+    setting: "Away", weather: "Any", prep: "None", vibe: null, suppliesText: "", notes: "", emoji: "",
   });
   const [form, setForm] = useState(blankForm());
 
@@ -611,7 +681,7 @@ function DateIdeaPicker() {
   function openEdit(a) {
     const fixed = normalizeActivity(a, categories);
     setEditingId(fixed.id);
-    setForm({ name: fixed.name, category: fixed.category, cost: fixed.cost, location: fixed.location, setting: fixed.setting, weather: fixed.weather, prep: fixed.prep, vibe: fixed.vibe, suppliesText: (fixed.supplies || []).join(", "), notes: fixed.notes });
+    setForm({ name: fixed.name, category: fixed.category, cost: fixed.cost, location: fixed.location, setting: fixed.setting, weather: fixed.weather, prep: fixed.prep, vibe: fixed.vibe, suppliesText: (fixed.supplies || []).join(", "), notes: fixed.notes, emoji: fixed.emoji || "" });
     setFormError("");
     setShowForm(true);
   }
@@ -721,6 +791,7 @@ function DateIdeaPicker() {
       weather: parseWeather(fieldMap.weather ? row[fieldMap.weather] : ""),
       prep: parsePrep(fieldMap.prep ? row[fieldMap.prep] : ""),
       vibe: parseVibe(fieldMap.vibe ? row[fieldMap.vibe] : ""),
+      emoji: fieldMap.emoji ? String(row[fieldMap.emoji] || "").trim() : "",
       supplies: parseSuppliesText(fieldMap.supplies ? row[fieldMap.supplies] : ""),
       notes: fieldMap.notes ? String(row[fieldMap.notes] || "") : "",
     };
@@ -790,13 +861,26 @@ function DateIdeaPicker() {
     const have = new Set(effSupplies.map((s) => s.toLowerCase()));
     return activities.filter((a) => {
       if (a.done) return false;
-      if (gWhen === "tonight" && a.prep !== "None") return false;
-      if (gWhen === "someday" && a.prep !== "Needs planning") return false;
-      if (gWhere === "home" && a.setting !== "Home" && a.setting !== "Either") return false;
-      if (gWhere === "dc" && a.setting !== "Away" && a.setting !== "Either") return false;
-      if (gSetting && gSetting !== "Either" && a.location !== gSetting && a.location !== "Either") return false;
-      if (gVibe && a.vibe && a.vibe !== gVibe) return false;
-      if (gCost !== null && !(Array.isArray(a.cost) ? a.cost : [a.cost]).includes(gCost)) return false;
+      if (gWhen.length) {
+        const okWhen =
+          (gWhen.includes("tonight") && a.prep === "None") ||
+          (gWhen.includes("someday") && a.prep === "Needs planning") ||
+          gWhen.includes("weekend");
+        if (!okWhen) return false;
+      }
+      if (gWhere.length) {
+        const okWhere =
+          (gWhere.includes("home") && (a.setting === "Home" || a.setting === "Either")) ||
+          (gWhere.includes("dc") && (a.setting === "Away" || a.setting === "Either")) ||
+          gWhere.includes("anywhere");
+        if (!okWhere) return false;
+      }
+      if (gSetting.length && !gSetting.some((s) => a.location === s || a.location === "Either")) return false;
+      if (gVibe.length && a.vibe && !gVibe.includes(a.vibe)) return false;
+      if (gCost.length) {
+        const costs = Array.isArray(a.cost) ? a.cost : [a.cost];
+        if (!costs.some((c) => gCost.includes(c))) return false;
+      }
       if (gSuppliesOn && !(a.supplies || []).every((s) => have.has(String(s).toLowerCase()))) return false;
       return true;
     });
@@ -826,9 +910,10 @@ function DateIdeaPicker() {
   }
 
   const guidedSummary = [
-    (GUIDED_WHERE.find((w) => w.id === gWhere) || {}).name,
-    (GUIDED_WHEN.find((w) => w.id === gWhen) || {}).name,
-    gVibe ? (VIBES.find((v) => v.id === gVibe) || {}).name : null,
+    gWhere.map((w) => (GUIDED_WHERE.find((x) => x.id === w) || {}).name).filter(Boolean).join(", "),
+    gWhen.map((w) => (GUIDED_WHEN.find((x) => x.id === w) || {}).name).filter(Boolean).join(", "),
+    gVibe.length ? gVibe.map((v) => (VIBES.find((x) => x.id === v) || {}).name).filter(Boolean).join(", ") : null,
+    gCost.length ? gCost.map((c) => (GUIDED_COSTS.find((x) => x.id === c) || {}).name).filter(Boolean).join(", ") : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -1027,53 +1112,18 @@ function DateIdeaPicker() {
 
       <div style={S.topbar}>
         <div style={S.tabs}>
-          {[["picker", "Picker"], ["manage", "Manage"], ["stats", "Stats & History"]].map(([id, label]) => (
+          {[["picker", "Picker"], ["settings", "Settings"]].map(([id, label]) => (
             <div key={id} className="dc-tab" onClick={() => setPage(id)} style={{ ...S.tab, ...(page === id ? S.tabActive : {}) }}>
               {label}
             </div>
           ))}
-        </div>
-        <div style={{ position: "relative" }}>
-          <button className="dc-btn" style={S.gearBtn} onClick={() => setSettingsOpen(!settingsOpen)} aria-label="Settings">⚙</button>
-          {settingsOpen && (
-            <div style={S.settingsPop} className="dc-in">
-              <div style={S.filterLabel}>Appearance</div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                {["light", "dark"].map((m) => (
-                  <div key={m} className="dc-chip" onClick={() => changeTheme(m)}
-                    style={{ ...S.segItem, background: theme === m ? T.text : "transparent", color: theme === m ? T.bg : T.text, borderColor: T.border, flex: 1, textAlign: "center" }}>
-                    {m === "light" ? "Light" : "Dark"}
-                  </div>
-                ))}
-              </div>
-              <div style={S.filterLabel}>Accent color</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-                {ACCENT_PRESETS.map((c) => (
-                  <span key={c.hex} onClick={() => changeAccent(c.hex)} title={c.name}
-                    style={{ width: 24, height: 24, borderRadius: "50%", background: c.hex, cursor: "pointer", display: "inline-block", border: accent === c.hex ? `2px solid ${T.text}` : "2px solid transparent", boxShadow: accent === c.hex ? `0 0 0 2px ${T.bg}` : "none" }} />
-                ))}
-              </div>
-              <div style={{ borderTop: `1px dashed ${T.border}`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                <button className="dc-btn" style={{ ...S.linkBtn, fontSize: 12, color: "#FF3B30" }} onClick={resetPasscode}>
-                  Reset passcode
-                </button>
-                <button className="dc-btn" style={{ ...S.linkBtn, fontSize: 12, color: "#FF3B30" }}
-                  onClick={() => {
-                    if (confirmResetAll) resetAllData();
-                    else { setConfirmResetAll(true); setTimeout(() => setConfirmResetAll(false), 4000); }
-                  }}>
-                  {confirmResetAll ? "Click again to erase everything" : "Reset all data"}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {page === "picker" && (
         <div style={{ display: "flex", justifyContent: "center", paddingTop: 16 }}>
           <div style={S.tabs}>
-            {[["classic", "Classic"], ["guided", "Guided"]].map(([id, label]) => (
+            {[["guided", "Guided"], ["classic", "Classic"]].map(([id, label]) => (
               <div key={id} className="dc-tab" onClick={() => { setPickerMode(id); setGResults(null); }}
                 style={{ ...S.tab, ...(pickerMode === id ? S.tabActive : {}) }}>
                 {label}
@@ -1117,44 +1167,114 @@ function DateIdeaPicker() {
           gResults={gResults} guidedPool={guidedPool} guidedSummary={guidedSummary}
           guidedFind={guidedFind} guidedReshuffleOne={guidedReshuffleOne}
           backToFilters={() => setGResults(null)}
-          toggleSingle={toggleSingle}
+          toggleMulti={toggleMulti}
           catById={catById} toggleDone={toggleDone}
         />
       )}
 
-      {page === "manage" && (
-        <ManagePage
-          T={T} S={S}
-          activities={filteredList} allCount={activities.length}
-          search={search} setSearch={setSearch}
-          categories={categories} catById={catById}
-          openAdd={openAdd} openEdit={openEdit} deleteActivity={deleteActivity} toggleDone={toggleDone}
-          requestDeleteActivity={requestDeleteActivity}
-          showCatManager={showCatManager} setShowCatManager={setShowCatManager}
-          newCatName={newCatName} setNewCatName={setNewCatName}
-          newCatColor={newCatColor} setNewCatColor={setNewCatColor}
-          addCategory={addCategory}
-          requestDeleteCategory={requestDeleteCategory}
-          updateCategory={updateCategory}
-          catSelectMode={catSelectMode} setCatSelectMode={setCatSelectMode}
-          selectedCatIds={selectedCatIds} toggleCatSelect={toggleCatSelect}
-          setBulkDeleteConfirm={setBulkDeleteConfirm}
-          openImport={() => { setImportOpen(true); setImportStep("upload"); setImportError(""); }}
-          exportBackup={exportBackup} handleBackupFile={handleBackupFile} backupFileRef={backupFileRef}
-          backupBusy={backupBusy} backupMsg={backupMsg}
-        />
-      )}
+      {page === "settings" && (
+        <div style={S.pageInner}>
+          <div style={S.h1}>Settings</div>
+          <div style={{ ...S.tabs, marginBottom: 18, display: "inline-flex" }}>
+            {[["appearance", "Appearance"], ["stats", "Stats"], ["manage", "Manage"]].map(([id, label]) => (
+              <div key={id} className="dc-tab" onClick={() => setSettingsTab(id)} style={{ ...S.tab, ...(settingsTab === id ? S.tabActive : {}) }}>
+                {label}
+              </div>
+            ))}
+          </div>
 
-      {page === "stats" && (
-        <StatsPage T={T} S={S} activities={activities} categories={categories} catById={catById} toggleDone={toggleDone} doneCount={doneCount} />
+          {settingsTab === "appearance" && (
+            <div style={S.panel}>
+              <div style={S.filterLabel}>Theme</div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                {["light", "dark"].map((m) => (
+                  <div key={m} className="dc-chip" onClick={() => changeTheme(m)}
+                    style={{ ...S.segItem, background: theme === m ? T.text : "transparent", color: theme === m ? T.bg : T.text, borderColor: T.border, flex: 1, textAlign: "center" }}>
+                    {m === "light" ? "Light" : "Dark"}
+                  </div>
+                ))}
+              </div>
+              <div style={S.filterLabel}>Accent color</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {ACCENT_PRESETS.map((c) => (
+                  <span key={c.hex} onClick={() => changeAccent(c.hex)} title={c.name}
+                    style={{ width: 28, height: 28, borderRadius: "50%", background: c.hex, cursor: "pointer", display: "inline-block", border: accent === c.hex ? `2px solid ${T.text}` : "2px solid transparent", boxShadow: accent === c.hex ? `0 0 0 2px ${T.bg}` : "none" }} />
+                ))}
+              </div>
+
+              <div style={{ borderTop: `1px dashed ${T.border}`, marginTop: 18, paddingTop: 6 }}>
+                <div
+                  className="dc-btn"
+                  onClick={() => setSettingsAdvOpen(!settingsAdvOpen)}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 2px", cursor: "pointer", color: T.textSecondary, fontSize: 13 }}
+                >
+                  <span>Advanced</span>
+                  <span style={{ transform: settingsAdvOpen ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform .15s" }}>›</span>
+                </div>
+                {settingsAdvOpen && (
+                  <div className="dc-in" style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: T.textTertiary, lineHeight: 1.5, marginBottom: 2 }}>
+                      Rarely needed — the passcode is already set, and erasing wipes everything.
+                    </div>
+                    <button className="dc-btn" style={{ ...S.linkBtn, fontSize: 12, color: "#FF3B30", textAlign: "left" }} onClick={resetPasscode}>
+                      Reset passcode
+                    </button>
+                    <button className="dc-btn" style={{ ...S.linkBtn, fontSize: 12, color: "#FF3B30", textAlign: "left" }}
+                      onClick={() => {
+                        if (confirmResetAll) resetAllData();
+                        else { setConfirmResetAll(true); setTimeout(() => setConfirmResetAll(false), 4000); }
+                      }}>
+                      {confirmResetAll ? "Click again to erase everything" : "Reset all data"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {settingsTab === "stats" && (
+            <StatsPage T={T} S={S} activities={activities} categories={categories} catById={catById} toggleDone={toggleDone} doneCount={doneCount} />
+          )}
+
+          {settingsTab === "manage" && (
+            <ManagePage
+              T={T} S={S}
+              activities={filteredList} allCount={activities.length}
+              search={search} setSearch={setSearch}
+              categories={categories} catById={catById}
+              openAdd={openAdd} openEdit={openEdit} deleteActivity={deleteActivity} toggleDone={toggleDone}
+              requestDeleteActivity={requestDeleteActivity}
+              showCatManager={showCatManager} setShowCatManager={setShowCatManager}
+              newCatName={newCatName} setNewCatName={setNewCatName}
+              newCatColor={newCatColor} setNewCatColor={setNewCatColor}
+              addCategory={addCategory}
+              requestDeleteCategory={requestDeleteCategory}
+              updateCategory={updateCategory}
+              catSelectMode={catSelectMode} setCatSelectMode={setCatSelectMode}
+              selectedCatIds={selectedCatIds} toggleCatSelect={toggleCatSelect}
+              setBulkDeleteConfirm={setBulkDeleteConfirm}
+              openImport={() => { setImportOpen(true); setImportStep("upload"); setImportError(""); }}
+              exportBackup={exportBackup} handleBackupFile={handleBackupFile} backupFileRef={backupFileRef}
+              backupBusy={backupBusy} backupMsg={backupMsg}
+            />
+          )}
+        </div>
       )}
 
       {showForm && (
         <div style={S.overlay} onClick={() => setShowForm(false)}>
           <form style={S.formBox} onClick={(e) => e.stopPropagation()} onSubmit={submitForm}>
             <div style={S.formTitle}>{editingId ? "Edit activity" : "Add activity"}</div>
-            <label style={S.formLabel}>Name</label>
-            <input required style={S.input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sunset at Gravelly Point" />
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={S.formLabel}>Name</label>
+                <input required style={S.input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sunset at Gravelly Point" />
+              </div>
+              <div style={{ width: 76, flexShrink: 0 }}>
+                <label style={S.formLabel}>Emoji</label>
+                <input style={{ ...S.input, textAlign: "center", fontSize: 20 }} value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} placeholder="auto" />
+              </div>
+            </div>
             <label style={S.formLabel}>Category</label>
             <select style={S.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -1591,7 +1711,7 @@ function PickerPage(props) {
               <div style={{ ...S.stripeSm, background: catById(a.category)?.color || T.accent }} />
               <div style={{ padding: "13px 15px" }}>
                 <div style={S.eyebrowSm}>{catById(a.category)?.name}</div>
-                <div style={S.miniTitle}>{a.name}</div>
+                <div style={S.miniTitle}>{a.emoji ? `${a.emoji} ` : ""}{a.name}</div>
                 <div style={S.miniMeta}>{costDisplay(a.cost)} · {a.location} · {a.setting}</div>
                 <button className="dc-btn" style={{ ...S.doneBtnMini, ...(a.done ? S.doneBtnCardActive : {}) }} onClick={() => toggleDone(a.id)}>
                   {a.done ? "✓" : "Mark done"}
@@ -1743,10 +1863,10 @@ function GuidedResultCard({ T, S, a, catById, onToggleDone, onShuffleOne }) {
           width: 52, height: 52, borderRadius: 14, flexShrink: 0,
           background: (cat && cat.color) || T.accent,
           color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 22, fontWeight: 800,
+          fontSize: 26,
         }}
       >
-        {(a.name || "?").charAt(0).toUpperCase()}
+        {a.emoji || "✨"}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>{a.name}</div>
@@ -1798,7 +1918,7 @@ function GuidedPage(props) {
     gSuppliesOn, setGSuppliesOn, gSuppliesOpen, setGSuppliesOpen,
     allSupplies, effSupplies, toggleSupply, gSupplySearch, setGSupplySearch,
     gCount, setGCount, gResults, guidedPool, guidedSummary,
-    guidedFind, guidedReshuffleOne, backToFilters, toggleSingle,
+    guidedFind, guidedReshuffleOne, backToFilters, toggleMulti,
     catById, toggleDone,
   } = props;
 
@@ -1854,7 +1974,7 @@ function GuidedPage(props) {
         <div style={S.filterLabel}>When</div>
         <div style={S.chipRow}>
           {GUIDED_WHEN.map((w) => (
-            <GuidedPill key={w.id} S={S} T={T} active={gWhen === w.id} onClick={() => setGWhen(w.id)}>
+            <GuidedPill key={w.id} S={S} T={T} active={gWhen.includes(w.id)} onClick={() => toggleMulti(gWhen, setGWhen, w.id)}>
               {w.name}
             </GuidedPill>
           ))}
@@ -1865,7 +1985,7 @@ function GuidedPage(props) {
         <div style={S.filterLabel}>Where</div>
         <div style={S.chipRow}>
           {GUIDED_WHERE.map((w) => (
-            <GuidedPill key={w.id} S={S} T={T} active={gWhere === w.id} onClick={() => setGWhere(w.id)}>
+            <GuidedPill key={w.id} S={S} T={T} active={gWhere.includes(w.id)} onClick={() => toggleMulti(gWhere, setGWhere, w.id)}>
               {w.name}
             </GuidedPill>
           ))}
@@ -1875,8 +1995,8 @@ function GuidedPage(props) {
       <div style={section}>
         <div style={S.filterLabel}>Setting</div>
         <div style={S.chipRow}>
-          {["Indoor", "Outdoor", "Either"].map((s) => (
-            <GuidedPill key={s} S={S} T={T} active={gSetting === s} onClick={() => toggleSingle(gSetting, setGSetting, s)}>
+          {["Indoor", "Outdoor"].map((s) => (
+            <GuidedPill key={s} S={S} T={T} active={gSetting.includes(s)} onClick={() => toggleMulti(gSetting, setGSetting, s)}>
               {s}
             </GuidedPill>
           ))}
@@ -1887,7 +2007,7 @@ function GuidedPage(props) {
         <div style={S.filterLabel}>Vibe</div>
         <div style={S.chipRow}>
           {VIBES.map((v) => (
-            <GuidedPill key={v.id} S={S} T={T} active={gVibe === v.id} onClick={() => toggleSingle(gVibe, setGVibe, v.id)}>
+            <GuidedPill key={v.id} S={S} T={T} active={gVibe.includes(v.id)} onClick={() => toggleMulti(gVibe, setGVibe, v.id)}>
               {v.name}
             </GuidedPill>
           ))}
@@ -1898,7 +2018,7 @@ function GuidedPage(props) {
         <div style={S.filterLabel}>Cost</div>
         <div style={S.chipRow}>
           {GUIDED_COSTS.map((c) => (
-            <GuidedPill key={c.id} S={S} T={T} active={gCost === c.id} onClick={() => toggleSingle(gCost, setGCost, c.id)}>
+            <GuidedPill key={c.id} S={S} T={T} active={gCost.includes(c.id)} onClick={() => toggleMulti(gCost, setGCost, c.id)}>
               {c.name}
             </GuidedPill>
           ))}
@@ -2133,7 +2253,7 @@ function ManagePage(props) {
             {sortedActivities.map((a) => (
               <tr key={a.id} className="dc-row">
                 <td style={S.td}><input type="checkbox" checked={a.done} onChange={() => toggleDone(a.id)} /></td>
-                <td style={{ ...S.td, fontWeight: 500, textDecoration: a.done ? "line-through" : "none", opacity: a.done ? 0.5 : 1 }}>{a.name}</td>
+                <td style={{ ...S.td, fontWeight: 500, textDecoration: a.done ? "line-through" : "none", opacity: a.done ? 0.5 : 1 }}>{a.emoji ? `${a.emoji} ` : ""}{a.name}</td>
                 <td style={S.td}>
                   <span style={S.pill}>
                     <span style={{ ...S.dotSm, background: catById(a.category)?.color || "#999" }} />
@@ -2215,7 +2335,7 @@ function StatsPage({ T, S, activities, categories, catById, toggleDone, doneCoun
               <button className="dc-btn" style={S.xBtn} onClick={() => toggleDone(a.id)}>Undo</button>
             </div>
           ))}
-          {!doneList.length && <div style={{ color: T.textSecondary, fontSize: 13, padding: "6px 0" }}>Nothing marked done yet — check things off from the Picker or Manage tab.</div>}
+          {!doneList.length && <div style={{ color: T.textSecondary, fontSize: 13, padding: "6px 0" }}>Nothing marked done yet — check things off from the Picker, or under Settings → Manage.</div>}
         </div>
       </div>
     </div>
@@ -2250,8 +2370,6 @@ function mkStyles(T) {
     tabs: { display: "flex", gap: 6, background: T.bgSubtle, borderRadius: 14, padding: 5, border: `1px solid ${T.border}` },
     tab: { padding: "9px 14px", borderRadius: 10, fontSize: 13.5, fontWeight: 600, color: T.textSecondary, letterSpacing: -0.1 },
     tabActive: { background: T.surface, color: T.text, boxShadow: T.shadow, fontWeight: 700 },
-    gearBtn: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, width: 38, height: 38, fontSize: 16, color: T.text, boxShadow: T.shadow },
-    settingsPop: { position: "absolute", right: 0, top: 48, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 16, width: 230, boxShadow: T.shadow, zIndex: 20 },
     h1: { fontSize: 30, fontWeight: 800, letterSpacing: -0.45, margin: "8px 0 4px" },
     subtext: { fontSize: 14, color: T.textSecondary, marginBottom: 18, lineHeight: 1.4 },
     panel: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 18, padding: "18px 18px", marginBottom: 18, boxShadow: T.shadow },
