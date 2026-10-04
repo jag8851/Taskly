@@ -423,7 +423,7 @@ function DateIdeaPicker() {
   const [emptyNotice, setEmptyNotice] = useState(false);
 
   // ---------- Guided mode state ----------
-  const [pickerMode, setPickerMode] = useState("classic");
+  const [pickerMode, setPickerMode] = useState("guided");
   const [gWhen, setGWhen] = useState("tonight");
   const [gWhere, setGWhere] = useState("anywhere");
   const [gSetting, setGSetting] = useState("Either");
@@ -1355,6 +1355,21 @@ function DateIdeaPicker() {
 function LockScreen({ S, T, mode, passInput, setPassInput, passConfirm, setPassConfirm, lockError, onSubmit }) {
   const creating = mode === "create";
   const isSeed = mode === "seed";
+  const [keyTarget, setKeyTarget] = useState("pass");
+  const keyPress = (d) => {
+    if (keyTarget === "confirm") setPassConfirm((p) => `${p || ""}${d}`);
+    else setPassInput((p) => `${p || ""}${d}`);
+  };
+  const keyBack = () => {
+    if (keyTarget === "confirm") setPassConfirm((p) => `${p || ""}`.slice(0, -1));
+    else setPassInput((p) => `${p || ""}`.slice(0, -1));
+  };
+  const keyStyle = {
+    width: 62, height: 62, borderRadius: "50%",
+    border: `1px solid ${T.border}`, background: T.bg,
+    fontSize: 22, fontWeight: 600, color: T.text,
+    cursor: "pointer", padding: 0,
+  };
   return (
     <div style={{ ...S.page, minHeight: 420, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <form onSubmit={onSubmit} style={{ ...S.formBox, maxWidth: 340, textAlign: "center" }}>
@@ -1368,16 +1383,26 @@ function LockScreen({ S, T, mode, passInput, setPassInput, passConfirm, setPassC
             : "Unlock to see your activities."}
         </div>
         <input
-          type="password" autoFocus style={S.input}
+          type="password" autoFocus inputMode="numeric" style={{ ...S.input, fontSize: 16 }}
           placeholder={creating ? "Create a passcode" : "Passcode"}
           value={passInput} onChange={(e) => setPassInput(e.target.value)}
+          onFocus={() => setKeyTarget("pass")}
         />
         {creating && (
           <input
-            type="password" style={S.input} placeholder="Confirm passcode"
+            type="password" style={{ ...S.input, fontSize: 16 }} placeholder="Confirm passcode"
             value={passConfirm} onChange={(e) => setPassConfirm(e.target.value)}
+            onFocus={() => setKeyTarget("confirm")}
           />
         )}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, justifyItems: "center", margin: "6px 0 4px" }}>
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+            <button key={d} type="button" onClick={() => keyPress(d)} style={keyStyle}>{d}</button>
+          ))}
+          <div />
+          <button type="button" onClick={() => keyPress("0")} style={keyStyle}>0</button>
+          <button type="button" onClick={keyBack} aria-label="Backspace" style={{ ...keyStyle, fontSize: 20 }}>⌫</button>
+        </div>
         {lockError && <div style={{ color: "#FF3B30", fontSize: 12.5, marginBottom: 8 }}>{lockError}</div>}
         <button type="submit" className="dc-btn" style={{ ...S.btnPrimary, width: "100%", padding: "11px 0", marginTop: 4 }}>
           {creating ? "Create & unlock" : "Unlock"}
